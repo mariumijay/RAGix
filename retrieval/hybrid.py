@@ -8,15 +8,17 @@ ranked list using the RRF formula:
 import logging
 from collections import defaultdict
 
+from networkx import config
+from config.config import RAG_MODES
+
 logger = logging.getLogger(__name__)
 
 RRF_K     = 60    # standard constant from the original RRF paper
 MIN_SCORE = 0.01  # ← drop weak matches below this RRF score threshold
 
-
 def reciprocal_rank_fusion(
     result_lists: list[list[dict]],
-    top_n: int = 30,
+    mode: str = "short",
     genre: str | None = None,
 ) -> list[dict]:
     """
@@ -30,13 +32,19 @@ def reciprocal_rank_fusion(
     Returns:
         Sorted list of chunk dicts with added "rrf_score" key.
     """
+
+    config = RAG_MODES.get(mode, RAG_MODES["short"])
+
+    top_n = config.get("TOP_K", 5) * 5   # expand pool before final cut
+    min_score = config.get("MIN_SCORE", MIN_SCORE)
+
     # Genre filter: discard chunks that don't match the requested genre
     # before scoring so non-matching chunks never influence RRF ranks.
     if genre is not None:
         result_lists = [
             [item for item in rl if item.get("genre") == genre]
             for rl in result_lists
-        ]
+            ]
 
     rrf_scores:  dict[str, float] = defaultdict(float)
     chunks_by_id: dict[str, dict] = {}
@@ -56,7 +64,7 @@ def reciprocal_rank_fusion(
         score = rrf_scores[cid]
 
         # ← Filter out weak/irrelevant chunks
-        if score < MIN_SCORE:
+        if score < min_score:
             logger.debug(f"Chunk {cid} dropped — rrf_score {score:.4f} < MIN_SCORE {MIN_SCORE}")
             continue
 

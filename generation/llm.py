@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-32b")
 
 # ── Token safety settings ────────────────────────────────────────────────────
-MAX_CONTEXT_CHUNKS   = 3
+MAX_CONTEXT_CHUNKS   = 5
 MAX_TOKENS_PER_CHUNK = 350
-MAX_OUTPUT_TOKENS    = 4096
+MAX_OUTPUT_TOKENS    = 2048
 
 # ── Key rotation setup ───────────────────────────────────────────────────────
 

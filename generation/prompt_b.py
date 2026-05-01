@@ -200,7 +200,13 @@ def get_prompt(genre: str, retrieved_chunks: list[dict], user_query: str) -> lis
     """
     from generation.prompt import STUDENT_UX_RULES  # avoid circular import
 
-    template = _TEMPLATES.get(genre, _TEMPLATES["essay"])
+    # ── FIXED: validate genre before lookup, log unknown genres ──
+    if genre not in _TEMPLATES:
+        print(f"[WARN] prompt_b.get_prompt: unknown genre '{genre}' — falling back to 'essay'. "
+              f"Check INTENT_TABLE mapping in prompt.py.")
+        genre = "essay"
+
+    template = _TEMPLATES[genre]  # safe — fallback already applied above
 
     system_with_ux = template["system"] + "\n\n" + STUDENT_UX_RULES
 

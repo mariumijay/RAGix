@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-file 
+file
 main.py  — Unified Urdu RAG CLI
 ================================
 Run after building both index sets:
@@ -21,7 +21,7 @@ from pathlib import Path
 import arabic_reshaper
 from bidi.algorithm import get_display
 from dotenv import load_dotenv
- 
+
 load_dotenv()
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -35,7 +35,7 @@ from retrieval.faiss_retriever import FAISSRetriever
 from retrieval.hybrid import reciprocal_rank_fusion
 from retrieval.query_normalizer import normalize_query
 from retrieval.reranker import rerank
-from retrieval.router import classify_query, route_dataset
+from retrieval.router import classify_query, classify_query_full, route_dataset
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -57,20 +57,37 @@ RETRIEVAL_CONFIG: dict[str, dict] = {
     "grammar":     {"faiss_k": 3, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
 }
 
+# Default config for genres not explicitly listed above
+_DEFAULT_RETRIEVAL = {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True}
+
 WORD_RANGES: dict[str, tuple[int | None, int | None]] = {
-    "application": (150, 180),
-    "letter":      (150, 200),
-    "essay":       (250, 300),
-    "story":       (180, 220),
-    "ap_beti":     (180, 200),
-    "receipt":     (50,  100),
-    "dialogue":    (150, 200),
-    "grammar":     (None, None),
+    "application":         (150, 180),
+    "letter":              (150, 200),
+    "essay":               (250, 300),
+    "story":               (180, 220),
+    "ap_beti":             (180, 200),
+    "receipt":             (50,  100),
+    "dialogue":            (150, 200),
+    "grammar":             (None, None),
+    "mcq":                 (None, None),
+    "summary":             (120, 150),
+    "comprehension":       (None, None),
+    "poem_explanation":    (100, 130),
+    "translation":         (None, None),
+    "narration_change":    (None, None),
+    "sentence_correction": (None, None),
+    "punctuation":         (None, None),
+    "paragraph_writing":   (80,  100),
+    "word_meanings":       (None, None),
 }
 
+# All genres that belong to the Urdu B pipeline
 _B_GENRES = frozenset({
     "letter", "application", "essay", "story",
     "ap_beti", "receipt", "dialogue", "grammar",
+    "mcq", "summary", "comprehension", "poem_explanation",
+    "translation", "narration_change", "sentence_correction",
+    "punctuation", "paragraph_writing", "word_meanings",
 })
 
 
@@ -160,18 +177,6 @@ def load_all_indexes() -> bool:
     return True
 
 
-# ── Auto dataset detection ────────────────────────────────────────────────────
-
-async def detect_subject(urdu_query: str) -> str:
-    """Return 'urdu_A', 'urdu_B', or 'both'."""
-    dataset = route_dataset(urdu_query)
-    if dataset != "both":
-        return dataset
-    # 'both' from route_dataset means no keywords matched → ask LLM
-    genre = await classify_query(urdu_query)
-    return "urdu_B" if genre in _B_GENRES else "urdu_A"
-
-
 # ── Urdu A pipeline ───────────────────────────────────────────────────────────
 
 def _retrieve_a(urdu_query: str, top_k: int) -> tuple[list[dict], list[dict]]:
@@ -204,7 +209,7 @@ def _print_result_a(result: dict) -> None:
 # ── Urdu B pipeline ───────────────────────────────────────────────────────────
 
 def _retrieve_b(urdu_query: str, genre: str) -> list[dict]:
-    cfg    = RETRIEVAL_CONFIG[genre]
+    cfg    = RETRIEVAL_CONFIG.get(genre, _DEFAULT_RETRIEVAL)
     faiss_n = max(10, int(cfg["faiss_w"] * 20))
     bm25_n  = max(10, int(cfg["bm25_w"]  * 20))
     dense  = state.faiss_b.search(urdu_query, top_k=faiss_n)
@@ -225,7 +230,7 @@ async def _generate_b(genre: str, chunks: list[dict], query: str) -> str:
 
 
 async def _validate(genre: str, output: str) -> list[str]:
-    min_w, max_w = WORD_RANGES[genre]
+    min_w, max_w = WORD_RANGES.get(genre, (None, None))
     skip_length  = min_w is None
     length_line  = "3. (length check skipped — always Y for this genre)" if skip_length \
                    else f"3. Is word count between {min_w} and {max_w}? YES/NO"
@@ -301,6 +306,23 @@ def _retrieve_both(urdu_query: str) -> list[dict]:
     return rerank(urdu_query, fused, top_k=TOP_K_FINAL)
 
 
+# ── Paper helper (shared between fast-path and LLM-path) ──────────────────────
+
+async def _run_paper(urdu_query: str) -> None:
+    print("\n[پرچہ ساز] جاری ہے…")
+    messages = build_paper_prompt(urdu_query)
+    response = await _create_completion(
+        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3000,
+    )
+    paper_text = re.sub(
+        r"<think>.*?</think>",
+        "",
+        response.choices[0].message.content,
+        flags=re.DOTALL,
+    ).strip()
+    print(format_urdu(paper_text))
+
+
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
 async def _main_loop() -> None:
@@ -333,21 +355,37 @@ async def _main_loop() -> None:
 
         urdu_query, detected_lang = normalize_query(user_input)
 
-        fast_intent = detect_intent(urdu_query)
+        # ── Step 1: keyword fast-path (zero LLM cost) ─────────────────────────
+        fast_intent = detect_intent(urdu_query)   # returns intent string or "unknown"
+
         if fast_intent == "paper":
-            print("\n[پرچہ ساز] جاری ہے…")
-            messages = build_paper_prompt(urdu_query)
-            response = await _create_completion(
-                DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3000,
-            )
-            paper_text = re.sub(r"<think>.*?</think>", "",
-                                response.choices[0].message.content, flags=re.DOTALL).strip()
-            print(format_urdu(paper_text))
+            await _run_paper(urdu_query)
             continue
 
-        subject = await detect_subject(urdu_query)
-        label   = {"urdu_A": "اردو A", "urdu_B": "اردو B", "both": "اردو A+B"}[subject]
-        print(f"\n[{label}] [جاری ہے]…")
+        if fast_intent != "unknown" and fast_intent in _B_GENRES:
+            # Keyword clearly matched a B-genre — no LLM call needed
+            subject = "urdu_B"
+            genre   = fast_intent
+
+        elif fast_intent != "unknown":
+            # Keyword matched an A-side task (summary, poem_explanation, etc.)
+            subject = "urdu_A"
+            genre   = fast_intent
+
+        else:
+            # ── Step 2: ambiguous query — ask the LLM classifier ──────────────
+            intent = await classify_query_full(urdu_query)
+
+            if intent == "paper":
+                await _run_paper(urdu_query)
+                continue
+
+            subject = "urdu_B" if intent in _B_GENRES else "urdu_A"
+            genre   = intent
+
+        # ── Step 3: route to the correct pipeline ─────────────────────────────
+        label = {"urdu_A": "اردو A", "urdu_B": "اردو B"}.get(subject, subject)
+        print(f"\n[{label}] [قسم: {genre}] [جاری ہے]…")
 
         if subject == "urdu_A":
             if not state.ready_a:
@@ -357,25 +395,23 @@ async def _main_loop() -> None:
             result = await generate_answer(urdu_query, reranked)
             _print_result_a({"answer": result["answer"], "citations": citations})
 
-        elif subject == "urdu_B":
+        else:  # urdu_B
             if not state.ready_b:
                 print("[خرابی] Urdu B indexes not loaded.\n")
                 continue
-            genre   = await classify_query(urdu_query)
+            # Safety net: if genre is still ambiguous, fall back to classify_query
+            if genre in ("unknown", "general_qa"):
+                genre = await classify_query(urdu_query)   # returns "essay" on error
             chunks  = _retrieve_b(urdu_query, genre)
             answer  = await _generate_b(genre, chunks, urdu_query)
             failing = await _validate(genre, answer)
             if failing:
                 answer = await _fix(genre, answer, failing)
-            _print_result_b({"answer": answer, "genre": genre, "validated": len(failing) == 0})
-
-        else:  # "both"
-            if not state.ready_a and not state.ready_b:
-                print("[خرابی] No indexes loaded.\n")
-                continue
-            reranked = _retrieve_both(urdu_query)
-            result   = await generate_answer(urdu_query, reranked)
-            _print_result_a({"answer": result["answer"]})
+            _print_result_b({
+                "answer":    answer,
+                "genre":     genre,
+                "validated": len(failing) == 0,
+            })
 
 
 if __name__ == "__main__":
