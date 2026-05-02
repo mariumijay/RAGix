@@ -21,6 +21,7 @@ from pathlib import Path
 import arabic_reshaper
 from bidi.algorithm import get_display
 from dotenv import load_dotenv
+from config.config import GENRE_TO_MODE
 
 load_dotenv()
 
@@ -47,47 +48,73 @@ TOP_K_SPARSE = int(os.getenv("TOP_K_SPARSE", "20"))
 TOP_K_FINAL  = int(os.getenv("TOP_K_FINAL",  "5"))
 
 RETRIEVAL_CONFIG: dict[str, dict] = {
-    "application": {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
-    "letter":      {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
-    "essay":       {"faiss_k": 3, "bm25_w": 0.3, "faiss_w": 0.7, "do_rerank": True},
-    "story":       {"faiss_k": 3, "bm25_w": 0.2, "faiss_w": 0.8, "do_rerank": True},
-    "ap_beti":     {"faiss_k": 2, "bm25_w": 0.2, "faiss_w": 0.8, "do_rerank": True},
-    "receipt":     {"faiss_k": 1, "bm25_w": 0.6, "faiss_w": 0.4, "do_rerank": False},
-    "dialogue":    {"faiss_k": 2, "bm25_w": 0.3, "faiss_w": 0.7, "do_rerank": True},
-    "grammar":     {"faiss_k": 3, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
+    # writing genres — faiss-heavy (semantic similarity matters most)
+    "application":      {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "letter":           {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "story":            {"faiss_k": 3, "bm25_w": 0.2, "faiss_w": 0.8, "do_rerank": True},
+    "dialogue":         {"faiss_k": 2, "bm25_w": 0.3, "faiss_w": 0.7, "do_rerank": True},
+    # tashreeh genres — balanced (need exact verse + semantic context)
+    "tashreeh_ghazal":  {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "tashreeh_nazam":   {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "nasar_tashreeh":   {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "poem_explanation": {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    # structured long — need more context chunks
+    "khulasa":          {"faiss_k": 5, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "markazi_khyal":    {"faiss_k": 4, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    # objective / one-line — bm25-heavy (keyword exact match matters)
+    "mcq":              {"faiss_k": 3, "bm25_w": 0.6, "faiss_w": 0.4, "do_rerank": False},
+    "word_meanings":    {"faiss_k": 2, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
+    "sentence_correction": {"faiss_k": 2, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
+    "zarbul_imsal":     {"faiss_k": 2, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
+    # short responses — balanced
+    "short_question":   {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "comprehension":    {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "translation":      {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
 }
 
 # Default config for genres not explicitly listed above
 _DEFAULT_RETRIEVAL = {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True}
 
+def _genre_to_mode(genre: str) -> str:
+    return GENRE_TO_MODE.get(genre, "short")
+
 WORD_RANGES: dict[str, tuple[int | None, int | None]] = {
+    # one-line / objective — no length check
+    "mcq":                 (None, None),
+    "word_meanings":       (None, None),
+    "sentence_correction": (None, None),
+    "zarbul_imsal":        (None, None),
+    # short responses — no length check
+    "short_question":      (None, None),
+    "general_qa":          (None, None),
+    "comprehension":       (None, None),
+    "translation":         (None, None),
+    # tashreeh — soft length targets
+    "tashreeh_ghazal":     (120, 150),
+    "tashreeh_nazam":      (120, 150),
+    "nasar_tashreeh":      (130, 160),
+    "poem_explanation":    (100, 130),
+    # structured long
+    "khulasa":             (250, 350),
+    "markazi_khyal":       (80,  120),
+    # writing genres — strict length enforced
     "application":         (150, 180),
     "letter":              (150, 200),
-    "essay":               (250, 300),
     "story":               (180, 220),
-    "ap_beti":             (180, 200),
-    "receipt":             (50,  100),
     "dialogue":            (150, 200),
-    "grammar":             (None, None),
-    "mcq":                 (None, None),
-    "summary":             (120, 150),
-    "comprehension":       (None, None),
-    "poem_explanation":    (100, 130),
-    "translation":         (None, None),
-    "narration_change":    (None, None),
-    "sentence_correction": (None, None),
-    "punctuation":         (None, None),
-    "paragraph_writing":   (80,  100),
-    "word_meanings":       (None, None),
 }
 
-# All genres that belong to the Urdu B pipeline
 _B_GENRES = frozenset({
-    "letter", "application", "essay", "story",
-    "ap_beti", "receipt", "dialogue", "grammar",
-    "mcq", "summary", "comprehension", "poem_explanation",
-    "translation", "narration_change", "sentence_correction",
-    "punctuation", "paragraph_writing", "word_meanings",
+    # one-line / objective
+    "mcq", "word_meanings", "sentence_correction", "zarbul_imsal",
+    # short
+    "short_question", "general_qa", "comprehension", "translation",
+    # tashreeh
+    "tashreeh_ghazal", "tashreeh_nazam", "nasar_tashreeh", "poem_explanation",
+    # structured long
+    "khulasa", "markazi_khyal",
+    # writing
+    "application", "letter", "story", "dialogue",
 })
 
 
@@ -179,10 +206,10 @@ def load_all_indexes() -> bool:
 
 # ── Urdu A pipeline ───────────────────────────────────────────────────────────
 
-def _retrieve_a(urdu_query: str, top_k: int) -> tuple[list[dict], list[dict]]:
+def _retrieve_a(urdu_query: str, top_k: int, mode: str = "short") -> tuple[list[dict], list[dict]]:
     dense  = state.faiss_a.search(urdu_query, top_k=TOP_K_DENSE)
     sparse = state.bm25_a.search(urdu_query,  top_k=TOP_K_SPARSE)
-    fused  = reciprocal_rank_fusion([dense, sparse])
+    fused  = reciprocal_rank_fusion([dense, sparse], mode=mode)
     ranked = rerank(urdu_query, fused, top_k=top_k)
     citations = [
         {
@@ -208,13 +235,13 @@ def _print_result_a(result: dict) -> None:
 
 # ── Urdu B pipeline ───────────────────────────────────────────────────────────
 
-def _retrieve_b(urdu_query: str, genre: str) -> list[dict]:
+def _retrieve_b(urdu_query: str, genre: str, mode: str = "short") -> list[dict]:
     cfg    = RETRIEVAL_CONFIG.get(genre, _DEFAULT_RETRIEVAL)
     faiss_n = max(10, int(cfg["faiss_w"] * 20))
     bm25_n  = max(10, int(cfg["bm25_w"]  * 20))
     dense  = state.faiss_b.search(urdu_query, top_k=faiss_n)
     sparse = state.bm25_b.search(urdu_query,  top_k=bm25_n)
-    fused  = reciprocal_rank_fusion([dense, sparse], genre=genre)
+    fused  = reciprocal_rank_fusion([dense, sparse], mode=mode, genre=genre)
     if cfg["do_rerank"]:
         return rerank(urdu_query, fused, top_k=cfg["faiss_k"])
     return fused[:cfg["faiss_k"]]
@@ -314,14 +341,10 @@ async def _run_paper(urdu_query: str) -> None:
     response = await _create_completion(
         DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3000,
     )
-    paper_text = re.sub(
-        r"<think>.*?</think>",
-        "",
-        response.choices[0].message.content,
-        flags=re.DOTALL,
-    ).strip()
+    raw = response.choices[0].message.content
+    paper_text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
     print(format_urdu(paper_text))
-
+    print()
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 
@@ -383,16 +406,16 @@ async def _main_loop() -> None:
             subject = "urdu_B" if intent in _B_GENRES else "urdu_A"
             genre   = intent
 
-        # ── Step 3: route to the correct pipeline ─────────────────────────────
         label = {"urdu_A": "اردو A", "urdu_B": "اردو B"}.get(subject, subject)
+        genre = genre or "general_qa"   # ← guard against None
         print(f"\n[{label}] [قسم: {genre}] [جاری ہے]…")
 
         if subject == "urdu_A":
             if not state.ready_a:
                 print("[خرابی] Urdu A indexes not loaded.\n")
                 continue
-            reranked, citations = _retrieve_a(urdu_query, TOP_K_FINAL)
-            result = await generate_answer(urdu_query, reranked)
+            reranked, citations = _retrieve_a(urdu_query, TOP_K_FINAL, mode=_genre_to_mode(genre))
+            result = await generate_answer(urdu_query, reranked, mode=_genre_to_mode(genre))
             _print_result_a({"answer": result["answer"], "citations": citations})
 
         else:  # urdu_B
@@ -401,8 +424,9 @@ async def _main_loop() -> None:
                 continue
             # Safety net: if genre is still ambiguous, fall back to classify_query
             if genre in ("unknown", "general_qa"):
-                genre = await classify_query(urdu_query)   # returns "essay" on error
-            chunks  = _retrieve_b(urdu_query, genre)
+                # NEW:
+                genre = await classify_query(urdu_query)   # returns "general_qa" on error  # returns "essay" on error
+            chunks = _retrieve_b(urdu_query, genre, mode=_genre_to_mode(genre))
             answer  = await _generate_b(genre, chunks, urdu_query)
             failing = await _validate(genre, answer)
             if failing:

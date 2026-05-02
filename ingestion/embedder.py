@@ -45,7 +45,7 @@ _embedding_model: Optional[SentenceTransformer] = None
 def get_embedding_model() -> SentenceTransformer:
     global _embedding_model
     if _embedding_model is None:
-        model_name = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
+        model_name = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-base")
         logger.info(f"Loading embedding model: {model_name}")
         _embedding_model = SentenceTransformer(model_name)
     return _embedding_model

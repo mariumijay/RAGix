@@ -47,24 +47,22 @@ def route_dataset(query: str) -> str:
 # ---------------------------------------------------------------------------
 
 ALL_INTENTS: frozenset[str] = frozenset({
-    # Urdu B — writing genres
-    "letter", "application", "essay", "story",
-    "ap_beti", "receipt", "dialogue",
-    # Urdu B — knowledge / textbook tasks
-    "grammar", "mcq", "summary", "comprehension",
-    "poem_explanation", "translation", "narration_change",
-    "sentence_correction", "punctuation", "paragraph_writing",
-    "word_meanings",
-    # Special
+    # one-line / objective
+    "mcq", "word_meanings", "sentence_correction", "zarbul_imsal",
+    # short
+    "short_question", "general_qa", "comprehension", "translation",
+    # tashreeh
+    "tashreeh_ghazal", "tashreeh_nazam", "nasar_tashreeh", "poem_explanation",
+    # structured long
+    "khulasa", "markazi_khyal",
+    # writing genres
+    "application", "letter", "story", "dialogue",
+    # special
     "paper",
-    # Urdu A fallback
-    "general_qa",
 })
 
-# Subset used by the original narrow B-only classifier
 _B_ALLOWED: frozenset[str] = frozenset({
-    "letter", "application", "essay", "story",
-    "ap_beti", "receipt", "dialogue", "grammar",
+    "letter", "application", "story", "dialogue",
 })
 
 # ---------------------------------------------------------------------------
@@ -74,54 +72,49 @@ _B_ALLOWED: frozenset[str] = frozenset({
 _B_SYSTEM = """\
 You are a query classifier for a Pakistani Urdu exam assistant.
 Read the query and return ONLY one label from this list:
-letter, application, essay, story, ap_beti, receipt, dialogue, grammar
+letter, application, story, dialogue
 
 Rules:
-- خط or لکھیں دوست کو → letter
-- درخواست or پرنسپل کو → application
-- مضمون or موضوع پر لکھیں → essay
-- کہانی or سبق آموز → story
-- آپ بیتی or اپنا واقعہ → ap_beti
-- رسید → receipt
-- مکالمہ → dialogue
-- جملہ or محاورہ or ضرب المثل or گرامر → grammar
+- خط / دوست کو لکھیں / کسی کو خط        → letter
+- درخواست / پرنسپل کو / اجازت مانگنا      → application
+- کہانی / سبق آموز / افسانہ               → story
+- مکالمہ / بات چیت                        → dialogue
 
 Return ONLY the label. No explanation. No Urdu. Just the English label."""
-
 
 _FULL_SYSTEM = """\
 You are a query classifier for a Pakistani Urdu Class 9-10 exam assistant.
 Read the query and return ONLY one label from this exact list:
 
-letter, application, essay, story, ap_beti, receipt, dialogue,
-grammar, mcq, summary, comprehension, poem_explanation, translation,
-narration_change, sentence_correction, punctuation, paragraph_writing,
-word_meanings, paper, general_qa
+mcq, word_meanings, sentence_correction, zarbul_imsal,
+short_question, general_qa, comprehension, translation,
+tashreeh_ghazal, tashreeh_nazam, nasar_tashreeh, poem_explanation,
+khulasa, markazi_khyal,
+application, letter, story, dialogue,
+paper
 
 Rules:
-- خط / دوست کو لکھیں          → letter
-- درخواست / پرنسپل کو          → application
-- مضمون / موضوع پر             → essay
-- کہانی / سبق آموز             → story
-- آپ بیتی / اپنا واقعہ         → ap_beti
-- رسید                        → receipt
-- مکالمہ                      → dialogue
-- واحد/جمع / محاورہ / قاعدہ    → grammar
-- MCQ / ایم سی کیو             → mcq
-- خلاصہ / مرکزی خیال          → summary
-- سوالات (comprehension)       → comprehension
-- تشریح / شعر                 → poem_explanation
-- آسان اردو / ترجمہ            → translation
-- بیان بدلیں                  → narration_change
-- جملے درست                   → sentence_correction
-- اوقاف                       → punctuation
-- پیراگراف                    → paragraph_writing
-- معنی / مطلب                 → word_meanings
-- پرچہ / ماڈل پیپر            → paper
-- anything else                → general_qa
+- MCQ / ایم سی کیو / درست جواب چنیں             → mcq
+- معنی / مطلب / لفظ کا مطلب                      → word_meanings
+- جملہ درست کریں / غلطی نکالیں                   → sentence_correction
+- ضرب المثل / کہاوت / محاورہ                     → zarbul_imsal
+- مختصر سوال / سوال جواب (short)                 → short_question
+- سوالات / comprehension / اقتباس کے سوال        → comprehension
+- ترجمہ / آسان اردو / اردو میں لکھیں             → translation
+- غزل کی تشریح / شعر کی تشریح                   → tashreeh_ghazal
+- نظم کی تشریح / نظم کا مفہوم                   → tashreeh_nazam
+- نثر / سبق / عبارت کی تشریح                    → nasar_tashreeh
+- نظم / شعر کی وضاحت (poem)                      → poem_explanation
+- خلاصہ / سبق کا خلاصہ / نظم کا خلاصہ           → khulasa
+- مرکزی خیال / سبق کا مرکزی خیال / موضوع        → markazi_khyal
+- خط / دوست کو لکھیں                             → letter
+- درخواست / پرنسپل کو / اجازت                   → application
+- کہانی / سبق آموز / افسانہ                      → story
+- مکالمہ / بات چیت                               → dialogue
+- پرچہ / ماڈل پیپر / ٹیسٹ                        → paper
+- anything else                                   → general_qa
 
 Return ONLY the label. No explanation."""
-
 
 # ---------------------------------------------------------------------------
 # Genre classifier for Urdu B only  (original — kept for compatibility)

@@ -8,16 +8,20 @@ import logging
 from typing import AsyncGenerator
 from groq import AsyncGroq, RateLimitError, AuthenticationError
 from generation.prompt import build_prompt, build_citations
+from config.config import RAG_MODES
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-32b")
 
 # ── Token safety settings ────────────────────────────────────────────────────
-MAX_CONTEXT_CHUNKS   = 5
-MAX_TOKENS_PER_CHUNK = 350
-MAX_OUTPUT_TOKENS    = 2048
-
+def _get_mode_limits(mode: str = "short") -> tuple[int, int, int]:
+    cfg = RAG_MODES.get(mode, RAG_MODES["short"])
+    return (
+        cfg["MAX_CONTEXT_CHUNKS"],
+        cfg["MAX_TOKENS_PER_CHUNK"],
+        cfg["MAX_OUTPUT_TOKENS"],
+    )
 # ── Key rotation setup ───────────────────────────────────────────────────────
 
 def _load_api_keys() -> list[str]:
@@ -55,15 +59,15 @@ def _strip_thinking(text: str) -> str:
 
 # ── Token guard ──────────────────────────────────────────────────────────────
 
-def _trim_chunks(context_chunks: list[dict]) -> list[dict]:
-    trimmed = context_chunks[:MAX_CONTEXT_CHUNKS]
+def _trim_chunks(context_chunks: list[dict], mode: str = "short") -> list[dict]:
+    max_chunks, max_tokens, _ = _get_mode_limits(mode)
+    trimmed = context_chunks[:max_chunks]
     result = []
     for chunk in trimmed:
         text  = chunk.get("text", "")
         words = text.split()
-        if len(words) > MAX_TOKENS_PER_CHUNK:
-            text = " ".join(words[:MAX_TOKENS_PER_CHUNK]) + "..."
-            logger.debug(f"Chunk truncated: {len(words)} → {MAX_TOKENS_PER_CHUNK} tokens")
+        if len(words) > max_tokens:
+            text = " ".join(words[:max_tokens]) + "..."
         result.append({**chunk, "text": text})
     return result
 
@@ -140,14 +144,11 @@ async def stream_answer(
         yield f"\n\nخرابی: {str(e)}"
 
 
-async def generate_answer(
-    query: str,
-    context_chunks: list[dict],
-    model: str | None = None,
-) -> dict:
+async def generate_answer(query, context_chunks, model=None, mode: str = "short") -> dict:
     """Non-streaming: return full answer + citations."""
     model       = model or DEFAULT_MODEL
-    safe_chunks = _trim_chunks(context_chunks)
+    safe_chunks = _trim_chunks(context_chunks, mode=mode)
+    _, _, max_output = _get_mode_limits(mode)
     messages    = build_prompt(query, safe_chunks)
 
     try:
@@ -156,7 +157,7 @@ async def generate_answer(
             messages=messages,
             stream=False,
             temperature=0.2,
-            max_tokens=MAX_OUTPUT_TOKENS,
+            max_tokens=max_output,
         )
 
         answer    = _strip_thinking(response.choices[0].message.content)  # ← stripped

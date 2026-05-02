@@ -8,7 +8,6 @@ ranked list using the RRF formula:
 import logging
 from collections import defaultdict
 
-from networkx import config
 from config.config import RAG_MODES
 
 logger = logging.getLogger(__name__)
@@ -65,7 +64,7 @@ def reciprocal_rank_fusion(
 
         # ← Filter out weak/irrelevant chunks
         if score < min_score:
-            logger.debug(f"Chunk {cid} dropped — rrf_score {score:.4f} < MIN_SCORE {MIN_SCORE}")
+            logger.debug(f"Chunk {cid} dropped — rrf_score {score:.4f} < min_score {min_score}")
             continue
 
         chunk = chunks_by_id[cid].copy()
