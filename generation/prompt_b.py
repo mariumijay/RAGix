@@ -1,6 +1,19 @@
 """generation/prompt_b.py — per-genre prompt templates for the Urdu B pipeline."""
 from __future__ import annotations
 
+STUDENT_UX_RULES = """
+STUDENT-FRIENDLY OUTPUT RULES (apply to every response):
+1. After every درخواست / خط / مضمون — add a 3-line "✅ امتحانی نکات" checklist
+2. After every grammar answer — state the قاعدہ in one line
+3. For MCQs — explain WHY the correct option is right (one sentence)
+4. For poem/شعر — always mention شاعر کا نام
+5. Tone: warm, encouraging — like a senior student tutoring a junior
+6. If student writes in English — respond in BOTH Urdu and English
+7. If query is outside Class 9-10 Urdu scope — respond:
+   "یہ سوال نصاب سے باہر ہے، لیکن میں مدد کر سکتا ہوں اگر آپ وضاحت کریں۔"
+"""
+
+
 _TEMPLATES: dict[str, dict[str, str]] = {
 
     # ── one-line / objective ──────────────────────────────────────────────────
@@ -325,7 +338,225 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         ),
         "user": "CONTEXT:\n{retrieved_chunks}\n\nTASK: مکالمہ لکھیں: {user_query}",
     },
-}  # ← closing brace for _TEMPLATES
+}  
+
+INTENT_TABLE = {
+    # ── objective / one-line ──────────────────────────────────────────────────
+    "mcq":                  "mcq",
+    "ایم سی کیو":           "mcq",
+    "درست جواب":            "mcq",
+    "معنی":                 "word_meanings",
+    "مطلب":                 "word_meanings",
+    "لفظ کا مطلب":          "word_meanings",
+    "جملہ درست":            "sentence_correction",
+    "غلطی نکالیں":          "sentence_correction",
+    "ضرب المثل":            "zarbul_imsal",
+    "محاورہ":               "zarbul_imsal",
+    "کہاوت":                "zarbul_imsal",
+
+    # ── short responses ───────────────────────────────────────────────────────
+    "مختصر سوال":           "short_question",
+    "سوال جواب":            "short_question",
+    "سوالات":               "comprehension",
+    "اقتباس":               "comprehension",
+    "ترجمہ":                "translation",
+    "آسان اردو":            "translation",
+
+    # ── tashreeh (SPECIFIC — order matters, longest first) ───────────────────
+    "غزل کی تشریح":         "tashreeh_ghazal",
+    "شعر کی تشریح":         "tashreeh_ghazal",
+    "نظم کی تشریح":         "tashreeh_nazam",
+    "نظم کا مفہوم":         "tashreeh_nazam",
+    "بند کی تشریح":         "tashreeh_nazam",
+    "نثر کی تشریح":         "nasar_tashreeh",
+    "عبارت کی تشریح":       "nasar_tashreeh",
+    "سبق کی تشریح":         "nasar_tashreeh",
+    "نظم کی وضاحت":         "poem_explanation",
+    "شعر کی وضاحت":         "poem_explanation",
+
+    # ── structured long ───────────────────────────────────────────────────────
+    "خلاصہ":                "khulasa",
+    "مرکزی خیال":           "markazi_khyal",
+    "موضوع":                "markazi_khyal",
+
+    # ── writing genres ────────────────────────────────────────────────────────
+    "درخواست":              "application",
+    "application":          "application",
+    "خط":                   "letter",
+    "letter":               "letter",
+    "مضمون":                "essay",
+    "essay":                "essay",
+    "کہانی":                "story",
+    "story":                "story",
+    "آپ بیتی":              "ap_beti",
+    "ap_beti":              "ap_beti",
+    "رسید":                 "receipt",
+    "receipt":              "receipt",
+    "مکالمہ":               "dialogue",
+    "dialogue":             "dialogue",
+
+    # ── paper generator ───────────────────────────────────────────────────────
+    "پرچہ":                 "paper",
+    "ماڈل پیپر":            "paper",
+    "ٹیسٹ پیپر":            "paper",
+    "paper":                "paper",
+    "model paper":          "paper",
+    "past paper":           "paper",
+}
+
+
+def detect_intent(query: str) -> str:
+    q = " ".join(query.strip().split())  # normalize whitespace
+    for keyword, intent in INTENT_TABLE.items():
+        if keyword in q:
+            return intent
+    return "unknown"
+
+PAPER_SYSTEM_PROMPT = """
+You are a Punjab Board Urdu exam paper setter for Class 9-10.
+Generate a COMPLETE model paper using this EXACT structure and marks.
+All instructions and content must be in formal Urdu only.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAPER HEADER (always include at top):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+بورڈ آف انٹرمیڈیٹ اینڈ سیکنڈری ایجوکیشن، لاہور
+سالانہ امتحان | جماعت نہم | مضمون: اردو لازمی
+کل نمبر: 75 | وقت: 2 گھنٹے 10 منٹ
+
+رول نمبر: ____________
+نام: ____________
+تاریخ: ____________
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+حصہ اول — معروضی | کل نمبر: 15
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+سوال نمبر 1 — کثیر الانتخابی سوالات (15 × 1 = 15 نمبر)
+نوٹ: ہر سوال کے چار ممکنہ جوابات (A، B، C، D) میں سے درست جواب کے گرد دائرہ لگائیں۔
+
+Topics to cover across 15 MCQs:
+- 5 from نثر (prose lessons from Class 9 textbook)
+- 4 from نظم / غزل (poetry from Class 9 textbook)
+- 3 from قواعد (grammar rules)
+- 3 from محاورات / ضرب الامثال
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+حصہ دوم — انشائی | کل نمبر: 60
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+سوال نمبر 2 — نثر: مرکزی خیال (5 نمبر)
+نوٹ: درج ذیل نثری اقتباس پڑھ کر مرکزی خیال لکھیں۔
+- Give ONE prose passage from Class 9 Urdu textbook
+- Student writes مرکزی خیال in 6-8 lines
+
+─────────────────────────────────────────────
+سوال نمبر 3 — نثر: تشریح (10 نمبر)
+نوٹ: درج ذیل میں سے کوئی ایک اقتباس کی تشریح لکھیں۔
+- Give TWO prose passages (سیاق و سباق) from DIFFERENT lessons
+- Student attempts ONE
+- Each passage should have خط کشیدہ الفاظ marked for explanation
+
+─────────────────────────────────────────────
+سوال نمبر 4 — مختصر سوالات (10 نمبر)
+نوٹ: درج ذیل میں سے کوئی پانچ سوالوں کے جواب لکھیں۔ (5 × 2 = 10)
+- Give 8 short questions
+- Questions must cover: نثر، نظم، غزل — mix all three
+- Student attempts ANY 5
+
+─────────────────────────────────────────────
+سوال نمبر 5 — خلاصہ (5 نمبر)
+نوٹ: درج ذیل میں سے کسی ایک سبق کا خلاصہ لکھیں۔
+- Give TWO options from different prose lessons
+- Student attempts ONE
+
+─────────────────────────────────────────────
+سوال نمبر 6 — نظم / غزل: تشریح (10 نمبر)
+
+(الف) نظم — کوئی تین اشعار کی تشریح کریں۔ (3 × 2 = 6 نمبر)
+نوٹ: درج ذیل میں سے کوئی تین اشعار کی تشریح لکھیں۔
+- Give FOUR اشعار from a نظم
+- Student attempts ANY 3
+
+(ب) غزل — کوئی دو اشعار کی تشریح کریں۔ (2 × 2 = 4 نمبر)
+نوٹ: درج ذیل میں سے کوئی دو اشعار کی تشریح لکھیں۔
+- Give THREE اشعار from a غزل
+- Student attempts ANY 2
+
+─────────────────────────────────────────────
+سوال نمبر 7 — خط / درخواست (10 نمبر)
+نوٹ: درج ذیل میں سے کوئی ایک لکھیں۔
+(a) خط — topic given
+(b) درخواست — topic given
+- Give ONE topic for each option
+- Student picks ONE
+
+─────────────────────────────────────────────
+سوال نمبر 8 — کہانی / مکالمہ (10 نمبر)
+نوٹ: درج ذیل میں سے کوئی ایک لکھیں۔
+(a) کہانی — topic/outline given
+(b) مکالمہ — topic given
+- Give ONE topic for each option
+- Student picks ONE
+
+─────────────────────────────────────────────
+سوال نمبر 9 — قواعد (5 نمبر)
+نوٹ: درج ذیل میں سے کوئی ایک حصہ کریں۔
+
+(الف) جملوں کی درستی (3 نمبر)
+- Give 3 incorrect Urdu sentences, one error each
+- Student corrects all 3
+
+OR
+
+(ب) محاورات / ضرب الامثال (2 نمبر)
+- Give 2 محاورے or ضرب الامثال
+- Student writes meaning + sentence for each
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MARK SUMMARY (must total exactly 75):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+سوال 1  — MCQs            = 15 نمبر
+سوال 2  — مرکزی خیال      =  5 نمبر
+سوال 3  — نثر تشریح        = 10 نمبر
+سوال 4  — مختصر سوالات    = 10 نمبر
+سوال 5  — خلاصہ            =  5 نمبر
+سوال 6  — نظم/غزل تشریح   = 10 نمبر
+سوال 7  — خط/درخواست       = 10 نمبر
+سوال 8  — کہانی/مکالمہ     = 10 نمبر
+سوال 9  — قواعد             =  5 نمبر
+کل                          = 75 نمبر
+
+GENERATION RULES:
+- Use ONLY authentic Class 9 Punjab Board Urdu textbook content
+- Never repeat the same passage in سوال 2، 3، and 5
+- نظم and غزل in سوال 6 must be from DIFFERENT poets
+- All question topics must vary — no repetition across the paper
+- Maintain formal exam paper tone throughout
+- Every سوال must have a clear نوٹ line with attempt instructions
+"""
+
+def build_paper_prompt(query: str) -> list[dict]:
+    """Build messages for paper generation — no RAG context needed."""
+    
+    # Extract any topic/group hint from query, default to generic
+    topic_hint = query.strip() if query.strip() else "عمومی"
+    
+    return [
+        {
+            "role": "system",
+            "content": PAPER_SYSTEM_PROMPT  # no STUDENT_UX_RULES — not for formal papers
+        },
+        {
+            "role": "user",
+            "content": (
+                f"ایک مکمل ماڈل پیپر تیار کریں۔\n"
+                f"اشارہ / موضوع: {topic_hint}\n\n"
+                f"تمام سوالات پنجاب بورڈ جماعت نہم کی اردو نصابی کتاب سے ہوں۔\n"
+                f"پیپر مکمل، باضابطہ، اور 75 نمبر کا ہو۔"
+            )
+        },
+    ]
 
 
 def _fmt_chunks(chunks: list[dict]) -> str:
@@ -338,7 +569,7 @@ def _fmt_chunks(chunks: list[dict]) -> str:
 
 
 def get_prompt(genre: str, retrieved_chunks: list[dict], user_query: str) -> list[dict]:
-    from generation.prompt import STUDENT_UX_RULES  # avoid circular import
+    
 
     if genre not in _TEMPLATES:
         print(f"[WARN] prompt_b.get_prompt: unknown genre '{genre}' — falling back to 'general_qa'. "

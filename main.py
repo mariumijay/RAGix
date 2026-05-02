@@ -28,8 +28,7 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(__file__))
 
 from generation.llm import _create_completion, DEFAULT_MODEL, generate_answer
-from generation.prompt_b import get_prompt
-from generation.prompt import detect_intent, build_paper_prompt
+from generation.prompt_b import get_prompt, detect_intent, build_paper_prompt
 from ingestion.embedder import get_dataset_paths
 from retrieval.bm25_retriever import BM25Retriever
 from retrieval.faiss_retriever import FAISSRetriever

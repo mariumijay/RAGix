@@ -5,6 +5,12 @@ RAG_MODES = {
         "MAX_OUTPUT_TOKENS": 800,
         "TOP_K": 4
     },
+    "one_line": {
+        "MAX_CONTEXT_CHUNKS": 3,
+        "MAX_TOKENS_PER_CHUNK": 200,
+        "MAX_OUTPUT_TOKENS": 300,
+        "TOP_K": 3
+    },
     "short": {
         "MAX_CONTEXT_CHUNKS": 5,
         "MAX_TOKENS_PER_CHUNK": 500,
@@ -17,11 +23,41 @@ RAG_MODES = {
         "MAX_OUTPUT_TOKENS": 2000,
         "TOP_K": 5
     },
-    "essay": {
+    "khulasa": {
         "MAX_CONTEXT_CHUNKS": 6,
         "MAX_TOKENS_PER_CHUNK": 450,
-        "MAX_OUTPUT_TOKENS": 3000,
+        "MAX_OUTPUT_TOKENS": 2500,
         "TOP_K": 6
+    },
+    "markazi": {
+        "MAX_CONTEXT_CHUNKS": 5,
+        "MAX_TOKENS_PER_CHUNK": 400,
+        "MAX_OUTPUT_TOKENS": 600,
+        "TOP_K": 5
+    },
+    "application": {
+        "MAX_CONTEXT_CHUNKS": 4,
+        "MAX_TOKENS_PER_CHUNK": 350,
+        "MAX_OUTPUT_TOKENS": 1200,
+        "TOP_K": 4
+    },
+    "letter": { 
+        "MAX_CONTEXT_CHUNKS": 4,
+        "MAX_TOKENS_PER_CHUNK": 350,
+        "MAX_OUTPUT_TOKENS": 1200,
+        "TOP_K": 4
+    },
+    "story":  { 
+        "MAX_CONTEXT_CHUNKS": 4,
+        "MAX_TOKENS_PER_CHUNK": 350,
+        "MAX_OUTPUT_TOKENS": 1500,
+        "TOP_K": 4 
+        },
+    "dialogue": { 
+        "MAX_CONTEXT_CHUNKS": 4,
+        "MAX_TOKENS_PER_CHUNK": 350,
+        "MAX_OUTPUT_TOKENS": 1500,
+        "TOP_K": 4
     }
 }
 
@@ -29,27 +65,33 @@ CHUNK_OVERLAP = 100
 
 # Maps intent/genre labels to RAG modes
 GENRE_TO_MODE: dict[str, str] = {
-    # lean/fast
+    # one-line / objective
     "mcq":                 "mcq",
-    "receipt":             "mcq",
     "word_meanings":       "mcq",
-    "sentence_correction": "mcq",
-    "punctuation":         "mcq",
-    "narration_change":    "mcq",
-    # medium
-    "letter":              "short",
-    "application":         "short",
-    "dialogue":            "short",
-    "story":               "short",
-    "ap_beti":             "short",
-    "paragraph_writing":   "short",
-    "summary":             "short",
+    "sentence_correction": "one_line",
+    "zarbul_imsal":        "one_line",
+
+    # short responses
+    "short_question":      "short",
+    "general_qa":          "short",
     "comprehension":       "short",
     "translation":         "short",
-    "general_qa":          "short",
-    # heavy
-    "grammar":             "tashreeh",
+
+    # explanatory
+    "tashreeh_ghazal":     "tashreeh",
+    "tashreeh_nazam":      "tashreeh",
+    "nasar_tashreeh":      "tashreeh",
     "poem_explanation":    "tashreeh",
-    # longest
-    "essay":               "essay",
+
+    # summaries / longer structured responses
+    "khulasa":             "khulasa",
+
+    # conceptual / moral
+    "markazi_khyal":       "markazi",
+
+    # formatted writing tasks
+    "application":         "application",
+    "letter":              "letter",
+    "story":               "story",
+    "dialogue":            "dialogue",
 }
