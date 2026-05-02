@@ -35,7 +35,7 @@ def reciprocal_rank_fusion(
     config = RAG_MODES.get(mode, RAG_MODES["short"])
 
     top_n = config.get("TOP_K", 5) * 5   # expand pool before final cut
-    min_score = config.get("MIN_SCORE", MIN_SCORE)
+    min_score = MIN_SCORE
 
     # Genre filter: discard chunks that don't match the requested genre
     # before scoring so non-matching chunks never influence RRF ranks.

@@ -180,7 +180,7 @@ def ingest_chunks(chunks: list[Chunk], dataset: str = "urdu_A") -> dict:
         f"FAISS has {index.ntotal} vectors but {len(chunks)} chunks were provided"
     )
 
-    embedding_model = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-small")
+    embedding_model = os.getenv("EMBEDDING_MODEL", "intfloat/multilingual-e5-base")
     config_path = get_dataset_paths(dataset)["config"]
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump({

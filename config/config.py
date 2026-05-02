@@ -63,7 +63,6 @@ RAG_MODES = {
 
 CHUNK_OVERLAP = 100
 
-# Maps intent/genre labels to RAG modes
 GENRE_TO_MODE: dict[str, str] = {
     # one-line / objective
     "mcq":                 "mcq",

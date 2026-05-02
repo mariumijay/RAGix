@@ -51,9 +51,28 @@ logger = logging.getLogger(__name__)
 DATASET = "urdu_B"
 
 VALID_GENRES = frozenset({
-    "letter", "application", "essay", "story",
-    "ap_beti", "receipt", "dialogue", "grammar",
+    "letter", "application", "story", "dialogue",
+    "mcq", "tashreeh_ghazal", "tashreeh_nazam", "nasar_tashreeh",
+    "khulasa", "markazi_khyal", "short_question",
+    "zarbul_imsal", "sentence_correction",
 })
+
+GENRE_CHUNK_CONFIG: dict[str, dict] = {
+    "mcq":                 {"chunk_size": 60,   "overlap": 10},
+    "zarbul_imsal":        {"chunk_size": 70,   "overlap": 10},
+    "sentence_correction": {"chunk_size": 70,   "overlap": 10},
+    "tashreeh_ghazal":     {"chunk_size": 80,   "overlap": 0},
+    "tashreeh_nazam":      {"chunk_size": 100,  "overlap": 20},
+    "nasar_tashreeh":      {"chunk_size": 130,  "overlap": 30},
+    "short_question":      {"chunk_size": 100,  "overlap": 20},
+    "khulasa":             {"chunk_size": 220,  "overlap": 50},
+    "markazi_khyal":       {"chunk_size": 170,  "overlap": 40},
+    "letter":              {"chunk_size": 9999, "overlap": 0},
+    "application":         {"chunk_size": 9999, "overlap": 0},
+    "story":               {"chunk_size": 220,  "overlap": 40},
+    "dialogue":            {"chunk_size": 180,  "overlap": 30},
+}
+_DEFAULT_CHUNK = {"chunk_size": 150, "overlap": 30}
 
 
 def _tokenize(text: str) -> list[str]:
@@ -122,31 +141,44 @@ def ingest_folder(folder_path: str) -> dict:
     Full Urdu B ingestion pipeline.
     Saves indexes to embeddings/urdu_B/.
     """
-    folder = Path(folder_path)
-    if not folder.exists():
-        raise ValueError(f"Folder not found: {folder}")
+    from pathlib import Path
 
-    paths = get_dataset_paths(DATASET)
+    path = Path(folder_path)
 
-    raw_docs = _load_folder(folder)
+    if not path.exists():
+        raise ValueError(f"Path not found: {path}")
+
+    # Case 1: single file
+    if path.is_file():
+        if path.suffix != ".txt":
+            raise ValueError(f"Only .txt files supported: {path}")
+        raw_docs = [path]   # treat single file as list
+
+    # Case 2: folder
+    elif path.is_dir():
+        raw_docs = _load_folder(path)
+
+    else:
+        raise ValueError(f"Invalid path: {path}")
+
     if not raw_docs:
-        raise ValueError(f"No .txt documents found in: {folder}")
+        raise ValueError(f"No .txt documents found in: {path}")
 
-    logger.info("Loaded %d source document(s) from %s", len(raw_docs), folder)
+    paths = get_dataset_paths(DATASET)   # ← was missing
+    all_meta: list[dict] = []            # ← was missing
+    chunk_idx = 0                        # ← was missing
 
-    all_meta: list[dict] = []
-    chunk_idx = 0
-
-    for doc in raw_docs:
+    for doc in raw_docs:                 # ← the loop that was missing
         cleaned = clean_text(doc["text"])
-        chunks  = chunk_text(
+        _cfg = GENRE_CHUNK_CONFIG.get(doc["genre"], _DEFAULT_CHUNK)
+        chunks = chunk_text(
             clean_text  = cleaned,
             book_title  = doc.get("source", ""),
             author      = "",
             chapter     = doc.get("genre", ""),
             page_number = 1,
-            chunk_size  = 150,
-            overlap     = 30,
+            chunk_size  = _cfg["chunk_size"],
+            overlap     = _cfg["overlap"],
         )
         for c in chunks:
             all_meta.append({

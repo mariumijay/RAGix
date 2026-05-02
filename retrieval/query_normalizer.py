@@ -131,6 +131,9 @@ def _convert_to_urdu(text: str) -> str:
         else:
             converted = output.get("generated_text", "")
 
+        # HF text-generation prepends the full prompt to the output — strip it
+        if converted.startswith(prompt):
+            converted = converted[len(prompt):]
         converted = converted.strip()
 
         if converted and _urdu_script_ratio(converted) > 0.3:

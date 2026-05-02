@@ -108,26 +108,15 @@ async def _create_completion(model: str, messages: list, stream: bool, **kwargs)
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-async def stream_answer(
-    query: str,
-    context_chunks: list[dict],
-    model: str | None = None,
-) -> AsyncGenerator[str, None]:
-    """Stream answer tokens one by one."""
-    model       = model or DEFAULT_MODEL
-    safe_chunks = _trim_chunks(context_chunks)
+async def stream_answer(query, context_chunks, model=None, mode="short"):
+    _, _, max_output = _get_mode_limits(mode) 
+    safe_chunks = _trim_chunks(context_chunks, mode=mode)
     messages    = build_prompt(query, safe_chunks)
 
     full_response = []  # buffer to strip <think> after stream ends
 
     try:
-        stream = await _create_completion(
-            model=model,
-            messages=messages,
-            stream=True,
-            temperature=0.2,
-            max_tokens=MAX_OUTPUT_TOKENS,
-        )
+        stream = await _create_completion(..., max_tokens=max_output) 
 
         async for chunk in stream:
             delta = chunk.choices[0].delta.content
