@@ -340,31 +340,60 @@ _TEMPLATES: dict[str, dict[str, str]] = {
     },
 }  
 
-INTENT_TABLE = {
-    # ── objective / one-line ──────────────────────────────────────────────────
-    "mcq":                  "mcq",
+INTENT_TABLE: dict[str, str] = {
+
+    # ── MCQ (longest/most specific first) ────────────────────────────────────
+    "درست جواب چنیں":       "mcq",
+    "چار میں سے":           "mcq",
     "ایم سی کیو":           "mcq",
-    "درست جواب":            "mcq",
+    "صحیح جواب":            "mcq",
+    "mcq":                  "mcq",
+    "MCQ":                  "mcq",
+
+    # ── Word meanings ─────────────────────────────────────────────────────────
+    "الفاظ کے معنی":        "word_meanings",
+    "معنی لکھیں":           "word_meanings",
+    "لفظ کے معنی":          "word_meanings",
+    "معنی بتائیں":          "word_meanings",
     "معنی":                 "word_meanings",
     "مطلب":                 "word_meanings",
-    "لفظ کا مطلب":          "word_meanings",
-    "جملہ درست":            "sentence_correction",
+
+    # ── Sentence correction ───────────────────────────────────────────────────
+    "جملہ درست کریں":       "sentence_correction",
     "غلطی نکالیں":          "sentence_correction",
+    "غلطیاں درست":          "sentence_correction",
+    "درست جملے":            "sentence_correction",
+    "جملے کی درستی":        "sentence_correction",
+    "اوقاف":                "sentence_correction",
+
+    # ── Zarbul imsal / idioms ─────────────────────────────────────────────────
     "ضرب المثل":            "zarbul_imsal",
     "محاورہ":               "zarbul_imsal",
     "کہاوت":                "zarbul_imsal",
+    "مصرعہ مکمل":           "zarbul_imsal",
 
-    # ── short responses ───────────────────────────────────────────────────────
+    # ── Short question ────────────────────────────────────────────────────────
     "مختصر سوال":           "short_question",
     "سوال جواب":            "short_question",
+    "مختصر جواب":           "short_question",
+    "مختصراً لکھیں":        "short_question",
+
+    # ── Comprehension ─────────────────────────────────────────────────────────
     "سوالات":               "comprehension",
     "اقتباس":               "comprehension",
+    "پیراگراف کے سوال":     "comprehension",
+    "عبارت کے سوال":        "comprehension",
+
+    # ── Translation ───────────────────────────────────────────────────────────
     "ترجمہ":                "translation",
     "آسان اردو":            "translation",
+    "اردو میں لکھیں":       "translation",
+    "سادہ اردو":            "translation",
 
-    # ── tashreeh (SPECIFIC — order matters, longest first) ───────────────────
+    # ── Tashreeh (SPECIFIC — longest first) ──────────────────────────────────
     "غزل کی تشریح":         "tashreeh_ghazal",
     "شعر کی تشریح":         "tashreeh_ghazal",
+    "اشعار کی تشریح":       "tashreeh_ghazal",
     "نظم کی تشریح":         "tashreeh_nazam",
     "نظم کا مفہوم":         "tashreeh_nazam",
     "بند کی تشریح":         "tashreeh_nazam",
@@ -373,26 +402,54 @@ INTENT_TABLE = {
     "سبق کی تشریح":         "nasar_tashreeh",
     "نظم کی وضاحت":         "poem_explanation",
     "شعر کی وضاحت":         "poem_explanation",
+    "تشریح":                "nasar_tashreeh",   # generic fallback
 
-    # ── structured long ───────────────────────────────────────────────────────
+    # ── Khulasa / Markazi khyal ───────────────────────────────────────────────
     "خلاصہ":                "khulasa",
+    "سبق کا خلاصہ":         "khulasa",
+    "نظم کا خلاصہ":         "khulasa",
     "مرکزی خیال":           "markazi_khyal",
+    "سبق کا مرکزی خیال":    "markazi_khyal",
     "موضوع":                "markazi_khyal",
 
-    # ── writing genres ────────────────────────────────────────────────────────
+    # ── Writing genres ────────────────────────────────────────────────────────
+    "درخواست لکھیں":        "application",
+    "درخواست لکھو":         "application",
+    "پرنسپل کو":            "application",
+    "اجازت مانگنا":         "application",
     "درخواست":              "application",
     "application":          "application",
+
+    "خط لکھیں":             "letter",
+    "خط لکھو":              "letter",
+    "کو خط":                "letter",
     "خط":                   "letter",
     "letter":               "letter",
+
+    "کہانی لکھیں":          "story",
+    "کہانی لکھو":           "story",
+    "سبق آموز کہانی":       "story",
+    "افسانہ لکھیں":         "story",
+    "آپ بیتی":              "story",
     "کہانی":                "story",
     "story":                "story",
+
+    "مکالمہ لکھیں":         "dialogue",
+    "مکالمہ لکھو":          "dialogue",
+    "بات چیت":              "dialogue",
     "مکالمہ":               "dialogue",
     "dialogue":             "dialogue",
 
-    # ── paper generator ───────────────────────────────────────────────────────
-    "پرچہ":                 "paper",
+    # ── Paragraph / Essay ─────────────────────────────────────────────────────
+    "پیراگراف لکھیں":       "short_question",
+    "پیراگراف":             "short_question",
+    "مضمون":                "story",           
+
+    # ── Paper generator ───────────────────────────────────────────────────────
     "ماڈل پیپر":            "paper",
     "ٹیسٹ پیپر":            "paper",
+    "پرچہ بنائیں":          "paper",
+    "پرچہ":                 "paper",
     "paper":                "paper",
     "model paper":          "paper",
     "past paper":           "paper",

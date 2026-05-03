@@ -15,7 +15,7 @@ _reranker = None
 def _get_reranker():
     global _reranker
     if _reranker is None:
-        model_name = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-12-v2")
+        model_name = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
         try:
             from sentence_transformers import CrossEncoder
             _reranker = CrossEncoder(model_name, max_length=512)
