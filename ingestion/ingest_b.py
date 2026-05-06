@@ -52,26 +52,19 @@ DATASET = "urdu_B"
 
 VALID_GENRES = frozenset({
     "letter", "application", "story", "dialogue",
-    "mcq", "tashreeh_ghazal", "tashreeh_nazam", "nasar_tashreeh",
-    "khulasa", "markazi_khyal", "short_question",
-    "zarbul_imsal", "sentence_correction",
+    "mcq", "zarbul_imsal", "sentence_correction",
 })
 
 GENRE_CHUNK_CONFIG: dict[str, dict] = {
     "mcq":                 {"chunk_size": 60,   "overlap": 10},
     "zarbul_imsal":        {"chunk_size": 70,   "overlap": 10},
     "sentence_correction": {"chunk_size": 70,   "overlap": 10},
-    "tashreeh_ghazal":     {"chunk_size": 80,   "overlap": 0},
-    "tashreeh_nazam":      {"chunk_size": 100,  "overlap": 20},
-    "nasar_tashreeh":      {"chunk_size": 130,  "overlap": 30},
-    "short_question":      {"chunk_size": 100,  "overlap": 20},
-    "khulasa":             {"chunk_size": 220,  "overlap": 50},
-    "markazi_khyal":       {"chunk_size": 170,  "overlap": 40},
     "letter":              {"chunk_size": 9999, "overlap": 0},
     "application":         {"chunk_size": 9999, "overlap": 0},
     "story":               {"chunk_size": 220,  "overlap": 40},
     "dialogue":            {"chunk_size": 180,  "overlap": 30},
 }
+
 _DEFAULT_CHUNK = {"chunk_size": 150, "overlap": 30}
 
 

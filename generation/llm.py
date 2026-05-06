@@ -5,7 +5,6 @@ LLM Interface — Groq API wrapper for Qwen model with API key rotation + token 
 import os
 import re
 import logging
-from typing import AsyncGenerator
 from groq import AsyncGroq, RateLimitError, AuthenticationError
 from generation.prompt import build_prompt, build_citations
 from config.config import RAG_MODES
@@ -116,7 +115,13 @@ async def stream_answer(query, context_chunks, model=None, mode="short"):
     full_response = []  # buffer to strip <think> after stream ends
 
     try:
-        stream = await _create_completion(..., max_tokens=max_output) 
+        stream = await _create_completion(
+        model=model or DEFAULT_MODEL,
+        messages=messages,
+        stream=True,
+        temperature=0.2,
+        max_tokens=max_output,
+        )
 
         async for chunk in stream:
             delta = chunk.choices[0].delta.content
@@ -142,7 +147,7 @@ async def generate_answer(query, context_chunks, model=None, mode: str = "short"
 
     try:
         response = await _create_completion(
-            model=model,
+            model=model or DEFAULT_MODEL,
             messages=messages,
             stream=False,
             temperature=0.2,

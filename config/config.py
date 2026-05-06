@@ -86,7 +86,7 @@ GENRE_TO_MODE: dict[str, str] = {
     "khulasa":             "khulasa",
 
     # conceptual / moral
-    "markazi_khyal":       "markazi",
+    "markazi_khyal":       "markazi_khyal",
 
     # formatted writing tasks
     "application":         "application",

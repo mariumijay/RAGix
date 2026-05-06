@@ -392,59 +392,44 @@ INTENT_TABLE: dict[str, str] = {
 
     # ── Tashreeh (SPECIFIC — longest first) ──────────────────────────────────
     "غزل کی تشریح":         "tashreeh_ghazal",
-    "شعر کی تشریح":         "tashreeh_ghazal",
     "اشعار کی تشریح":       "tashreeh_ghazal",
     "نظم کی تشریح":         "tashreeh_nazam",
-    "نظم کا مفہوم":         "tashreeh_nazam",
+    "نظم کا مفہوم":         "poem_explanantion",
     "بند کی تشریح":         "tashreeh_nazam",
     "نثر کی تشریح":         "nasar_tashreeh",
-    "عبارت کی تشریح":       "nasar_tashreeh",
+    "عبارت کا مفہوم":       "poem_explanation",
     "سبق کی تشریح":         "nasar_tashreeh",
     "نظم کی وضاحت":         "poem_explanation",
-    "شعر کی وضاحت":         "poem_explanation",
+    "غزل کی وضاحت":         "poem_explanation",
     "تشریح":                "nasar_tashreeh",   # generic fallback
 
     # ── Khulasa / Markazi khyal ───────────────────────────────────────────────
     "خلاصہ":                "khulasa",
     "سبق کا خلاصہ":         "khulasa",
-    "نظم کا خلاصہ":         "khulasa",
+    "نظم کا مرکزی خیال":   "markazi_khyal",
     "مرکزی خیال":           "markazi_khyal",
-    "سبق کا مرکزی خیال":    "markazi_khyal",
     "موضوع":                "markazi_khyal",
 
     # ── Writing genres ────────────────────────────────────────────────────────
-    "درخواست لکھیں":        "application",
-    "درخواست لکھو":         "application",
-    "پرنسپل کو":            "application",
+    "درخواست":        "application",
+    "درخواست":         "application",
     "اجازت مانگنا":         "application",
-    "درخواست":              "application",
     "application":          "application",
 
-    "خط لکھیں":             "letter",
-    "خط لکھو":              "letter",
-    "کو خط":                "letter",
-    "خط":                   "letter",
+    "خط":             "letter",
     "letter":               "letter",
 
-    "کہانی لکھیں":          "story",
-    "کہانی لکھو":           "story",
     "سبق آموز کہانی":       "story",
-    "افسانہ لکھیں":         "story",
-    "آپ بیتی":              "story",
+    "افسانہ":         "story",
     "کہانی":                "story",
     "story":                "story",
 
-    "مکالمہ لکھیں":         "dialogue",
-    "مکالمہ لکھو":          "dialogue",
+    "مکالمہ":         "dialogue",
+    "مکالمہ":          "dialogue",
     "بات چیت":              "dialogue",
     "مکالمہ":               "dialogue",
-    "dialogue":             "dialogue",
-
-    # ── Paragraph / Essay ─────────────────────────────────────────────────────
-    "پیراگراف لکھیں":       "short_question",
-    "پیراگراف":             "short_question",
-    "مضمون":                "story",           
-
+    "dialogue":             "dialogue", 
+    
     # ── Paper generator ───────────────────────────────────────────────────────
     "ماڈل پیپر":            "paper",
     "ٹیسٹ پیپر":            "paper",
@@ -458,10 +443,13 @@ INTENT_TABLE: dict[str, str] = {
 
 def detect_intent(query: str) -> str:
     q = " ".join(query.strip().split())  # normalize whitespace
+    best_match = "unknown"
+    best_len = 0
     for keyword, intent in INTENT_TABLE.items():
-        if keyword in q:
-            return intent
-    return "unknown"
+        if keyword in q and len(keyword) > best_len:
+            best_match = intent
+            best_len = len(keyword)
+    return best_match
 
 PAPER_SYSTEM_PROMPT = """
 You are a Punjab Board Urdu exam paper setter for Class 9-10.
@@ -568,13 +556,14 @@ OR
 MARK SUMMARY (must total exactly 75):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 سوال 1  — MCQs            = 15 نمبر
-سوال 2  — مرکزی خیال      =  5 نمبر
+سوال 2 — نظم/غزل تشریح   = 10 نمبر
 سوال 3  — نثر تشریح        = 10 نمبر
 سوال 4  — مختصر سوالات    = 10 نمبر
 سوال 5  — خلاصہ            =  5 نمبر
-سوال 6  — نظم/غزل تشریح   = 10 نمبر
+سوال 6  — مرکزی خیال      =  5 نمبر
+
 سوال 7  — خط/درخواست       = 10 نمبر
-سوال 8  — کہانی/مکالمہ     = 10 نمبر
+سوال 8  — کہانی/مکالمہ     = 5 نمبر
 سوال 9  — قواعد             =  5 نمبر
 کل                          = 75 نمبر
 

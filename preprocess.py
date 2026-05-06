@@ -44,7 +44,7 @@ def preprocess(book_path: str, title: str = "Urdu", author: str = "Unknown") -> 
 
     print("[3/4] Chunking on sentence boundaries …")
     t0 = time.time()
-    chunks = chunk_text(clean, book_title=title, author=author)
+    chunks = chunk_text(clean, book_title=title, author=author, chunk_size=300, overlap=60)
     print(f"      Done in {time.time()-t0:.1f}s  ({len(chunks):,} chunks created)\n")
 
     print("[4/4] Embedding chunks and building FAISS + BM25 indexes …")
