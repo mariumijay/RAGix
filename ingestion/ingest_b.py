@@ -65,7 +65,7 @@ GENRE_CHUNK_CONFIG: dict[str, dict] = {
     "dialogue":            {"chunk_size": 180,  "overlap": 30},
 }
 
-_DEFAULT_CHUNK = {"chunk_size": 150, "overlap": 30}
+_DEFAULT_CHUNK = {"chunk_size": 300, "overlap": 60}
 
 
 def _tokenize(text: str) -> list[str]:

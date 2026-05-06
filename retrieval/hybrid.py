@@ -41,7 +41,7 @@ def reciprocal_rank_fusion(
     # before scoring so non-matching chunks never influence RRF ranks.
     if genre is not None:
         result_lists = [
-            [item for item in rl if item.get("genre") == genre]
+            [item for item in rl if item.get("dataset") != "urdu_B" or item.get("genre") == genre
             for rl in result_lists
             ]
 

@@ -338,7 +338,7 @@ async def _run_paper(urdu_query: str) -> None:
     print("\n[پرچہ ساز] جاری ہے…")
     messages = build_paper_prompt(urdu_query)
     response = await _create_completion(
-        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3000,
+        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=6000,
     )
     raw = response.choices[0].message.content
     paper_text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
