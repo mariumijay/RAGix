@@ -2,8 +2,10 @@
 Pydantic v2 request/response schemas for the FastAPI endpoints.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+
+SUPPORTED_DATASETS: frozenset[str] = frozenset({"urdu_A", "urdu_B"})
 
 
 # ---------------------------------------------------------------------------
@@ -17,6 +19,20 @@ class IngestRequest(BaseModel):
     page_start:  int = Field(default=1,  description="Starting page number")
     chunk_size:  int = Field(default=400, ge=100, le=1000)
     overlap:     int = Field(default=50,  ge=0,   le=200)
+    dataset:     str = Field(
+        default="urdu_A",
+        description="Target dataset for ingestion. Must be one of: urdu_A, urdu_B",
+    )
+
+    @field_validator("dataset")
+    @classmethod
+    def validate_dataset(cls, v: str) -> str:
+        if v not in SUPPORTED_DATASETS:
+            raise ValueError(
+                f"Invalid dataset '{v}'. "
+                f"Supported datasets are: {sorted(SUPPORTED_DATASETS)}"
+            )
+        return v
 
 
 class IngestResponse(BaseModel):

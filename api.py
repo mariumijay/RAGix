@@ -30,6 +30,7 @@ from models.schemas import (
     ChunksResponse,
     HealthResponse,
     IngestResponse,
+    SUPPORTED_DATASETS,
 )
 from retrieval.bm25_retriever import BM25Retriever
 from retrieval.faiss_retriever import FAISSRetriever
@@ -151,7 +152,7 @@ async def query_endpoint(req: QueryRequest):
         raise HTTPException(status_code=503, detail="No indexes loaded. Run ingestion first.")
 
     urdu_query, _ = normalize_query(req.query)
-    await classify_query_full(urdu_query)  # classification side-effect for routing context
+    await classify_query_full(urdu_query)
     chunks = _retrieve(urdu_query, top_k=req.top_k)
 
     if req.stream:
@@ -195,6 +196,16 @@ async def ingest_endpoint(
     overlap:     int        = Form(default=50),
     dataset:     str        = Form(default="urdu_A"),
 ):
+    # Validate dataset before touching any files
+    if dataset not in SUPPORTED_DATASETS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Invalid dataset '{dataset}'. "
+                f"Supported datasets are: {sorted(SUPPORTED_DATASETS)}"
+            ),
+        )
+
     try:
         raw_bytes = await file.read()
         raw_text  = raw_bytes.decode("utf-8", errors="replace")
@@ -215,9 +226,10 @@ async def ingest_endpoint(
     if not chunks:
         raise HTTPException(status_code=422, detail="No chunks produced from the uploaded file.")
 
+    # Ingest into the validated target dataset
     stats = ingest_chunks(chunks, dataset=dataset)
 
-    # Reload indexes so new data is immediately available
+    # Reload the indexes for the affected dataset immediately
     if dataset == "urdu_A":
         _load_indexes_a()
     elif dataset == "urdu_B":
@@ -228,7 +240,7 @@ async def ingest_endpoint(
         chunks_indexed = stats.get("chunks_indexed", len(chunks)),
         embedding_dim  = stats.get("embedding_dim", 0),
         faiss_total    = stats.get("faiss_total", 0),
-        message        = f"Ingested {len(chunks)} chunks into {dataset}.",
+        message        = f"Ingested {len(chunks)} chunks into dataset '{dataset}'.",
     )
 
 

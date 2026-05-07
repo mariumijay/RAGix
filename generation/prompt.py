@@ -130,14 +130,25 @@ def build_prompt(query: str, context_chunks: list[dict]) -> list[dict]:
 
 
 def build_citations(chunks: list[dict]) -> list[dict]:
-    return [
-        {
-            "chunk_id": c.get("chunk_id"),
-            "chapter":  c.get("chapter"),
-            "page":     c.get("page_start"),
-            "text":     c.get("text", "")[:120],
-        }
-        for c in chunks
-        if c.get("text")
-    ]
-
+    citations = []
+    for c in chunks:
+        raw_text = c.get("text", "")
+        if not raw_text:
+            continue
+        # Normalize whitespace while preserving Urdu RTL text integrity
+        normalized = " ".join(raw_text.split())
+        text_preview = normalized[:100] + ("..." if len(normalized) > 100 else "")
+        citations.append(
+            {
+                "chunk_id":    c.get("chunk_id"),
+                "chapter":     c.get("chapter"),
+                "page":        c.get("page_start"),
+                "page_start":  c.get("page_start"),
+                "page_end":    c.get("page_end"),
+                "source":      c.get("source"),
+                "score":       c.get("score"),
+                "text":        raw_text[:120],
+                "text_preview": text_preview,
+            }
+        )
+    return citations
