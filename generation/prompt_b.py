@@ -1,6 +1,34 @@
 """generation/prompt_b.py — per-genre prompt templates for the Urdu B pipeline."""
 from __future__ import annotations
 
+# ── Class 9 Punjab Board — Author/Poet Reference Table ───────────────────────
+AUTHOR_REF = """
+[جماعت نہم اردو — مصنفین و شعراء کی فہرست]
+نثر (سبق):
+- نام دیو مالی → مولوی عبد الحق
+- آرام و سکون → امتیاز علی تاج
+- بھیڑیا → غلام عباس
+- ابتدائی حساب → ابن انشا
+- اپنی مدد آپ → سید سلیمان ندوی
+- اخلاق حسنہ → سرسید احمد خاں
+- کلیم اور مرزا ظاہر دار بیگ → ڈپٹی نذیر احمد
+- لڑی میں پروئے ہوئے منظر → رضا علی عابدی
+
+نظمیں:
+- محنت کی برکات → مولانا حالی
+- جاوید کے نام → علامہ محمد اقبال
+- پیام لطیف → شیخ ایاز (مترجم)
+- نعت → مولانا ظفر علی خاں
+- محمد → مظفر وارثی
+- ت اور مشاعرہ → دلاور فگار
+
+غزلیں:
+- سن تو سہی جہاں میں ہے تیرا افسانہ کیا → خواجہ حیدر علی آتش
+- غم ہے یا خوشی ہے تو → ناصر کاظمی
+- کاش طوفاں میں سفینے کو اتارا ہوتا → پروین شاکر
+- میر تقی میر کی غزل بھی شامل ہے
+"""
+
 STUDENT_UX_RULES = """
 STUDENT-FRIENDLY OUTPUT RULES (apply to every response):
 1. After every درخواست / خط / مضمون — add a 3-line "✅ امتحانی نکات" checklist
@@ -22,6 +50,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "system": (
             "Punjab Board Urdu exam expert Class 9-10.\n"
             "Answer MCQs with format: نمبر → درست آپشن — وجہ (one sentence)\n"
+            f"{AUTHOR_REF}\n"
             "Rules: one answer per question, always explain why in Urdu, "
             "ONLY from retrieved context — if not found: \"جواب دستیاب نہیں\""
         ),
@@ -114,6 +143,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
             "3. مشکل الفاظ کے معانی\n"
             "4. مفہوم (1-2 lines only)\n"
             "5. تشریح (3-4 detailed paragraphs with explanation, context, and references)\n\n"
+            f"{AUTHOR_REF}\n"
             "Rules:\n"
             "- Use formal Urdu\n"
             "- No English\n"
@@ -139,6 +169,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
             "6. تشریح: 3-4 مکمل پیراگراف، واضح اور تفصیلی\n"
             "   - ہر پیراگراف میں خیال کی وضاحت ہو\n"
             "   - مناسب اور متعلقہ حوالہ جات شامل کریں (ادبی سیاق، شاعر کا انداز، موضوع)\n\n"
+            f"{AUTHOR_REF}\n"
             "Rules:\n"
             "- زبان خالص اور بامحاورہ اردو ہو\n"
             "- کوئی انگریزی استعمال نہ کریں\n"
@@ -157,6 +188,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
             "2. مشکل الفاظ کے معانی (Difficult words meanings)\n"
             "3. مفہوم (2-3 سطریں)\n"
             "4. تشریح (تفصیلی وضاحت 5-6 پیراگراف میں)\n\n"
+            f"{AUTHOR_REF}\n"
             "تشریح میں عبارت کے مرکزی خیال، سیاق و سباق، اور سبق کے پیغام کو واضح کریں۔ "
             "جہاں ممکن ہو، کتاب یا سبق سے متعلق مناسب اور متعلقہ حوالے شامل کریں۔\n\n"
             "Rules:\n"
@@ -177,6 +209,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
             "2. لفظی مطلب: meanings of difficult words\n"
             "3. مفہوم: overall meaning (3-4 sentences)\n"
             "4. مرکزی خیال: central message (1-2 sentences)\n"
+            f"{AUTHOR_REF}\n"
             "Rules: 100-130 words, do not copy verse into explanation body."
         ),
         "user": "CONTEXT:\n{retrieved_chunks}\n\nTASK: Explain: {user_query}",
@@ -192,6 +225,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
             "1. سبق کا عنوان\n"
             "2. مصنف کا نام\n"
             "3. خلاصہ (5–6 paragraphs)\n\n"
+            f"{AUTHOR_REF}\n"
             "Instructions:\n"
             "- Write in simple, clear Urdu.\n"
             "- Use your own words (no copying from passage).\n"
@@ -210,20 +244,24 @@ _TEMPLATES: dict[str, dict[str, str]] = {
     # ── conceptual / moral ────────────────────────────────────────────────────
 
     "markazi_khyal": {
-        "system": (
-            "Punjab Board Urdu exam expert Class 9-10.\n"
-            "Write مرکزی خیال with the following strict structure:\n"
-            "1. نظم/غزل کا نام\n"
-            "2. شاعر کا نام\n"
-            "3. مرکزی خیال: 4-5 lines explaining the main idea\n\n"
-            "Rules:\n"
-            "- Use simple, formal Urdu\n"
-            "- Write in continuous paragraph form (no bullet points)\n"
-            "- Keep it concise and to the point\n"
-            "- Do not add extra headings except required ones"
-        ),
+    "system": (
+        "Punjab Board Urdu exam expert Class 9-10.\n"
+        "Write مرکزی خیال with the following strict structure:\n"
+        "1. سبق/نظم/غزل کا نام\n"
+        "2. مصنف/شاعر کا نام\n"
+        "3. مرکزی خیال: a detailed paragraph of 4-5 sentences minimum explaining "
+        "the main theme, message, and moral of the lesson or poem. "
+        "Cover: موضوع، پیغام، سبق، اور ادبی اہمیت\n\n"
+        f"{AUTHOR_REF}\n"
+        "Rules:\n"
+        "- Minimum 80-100 words for مرکزی خیال section\n"
+        "- Use simple, formal Urdu\n"
+        "- Write in continuous paragraph form (no bullet points)\n"
+        "- Do not add extra headings except required ones"
+    ),
         "user": "CONTEXT:\n{retrieved_chunks}\n\nTASK: مرکزی خیال لکھیں: {user_query}",
     },
+    
 
     # ── formatted writing tasks ───────────────────────────────────────────────
 
@@ -394,7 +432,7 @@ INTENT_TABLE: dict[str, str] = {
     "غزل کی تشریح":         "tashreeh_ghazal",
     "اشعار کی تشریح":       "tashreeh_ghazal",
     "نظم کی تشریح":         "tashreeh_nazam",
-    "نظم کا مفہوم":         "poem_explanantion",
+    "نظم کا مفہوم":         "poem_explanation",
     "بند کی تشریح":         "tashreeh_nazam",
     "نثر کی تشریح":         "nasar_tashreeh",
     "عبارت کا مفہوم":       "poem_explanation",
@@ -438,6 +476,13 @@ INTENT_TABLE: dict[str, str] = {
     "paper":                "paper",
     "model paper":          "paper",
     "past paper":           "paper",
+    # after existing entries, add:
+    "میں کیا سبق دیا":      "general_qa",
+    "کیا پیغام دیا":        "general_qa",
+    "کے نظریات":            "general_qa",
+    "کی خصوصیات":           "general_qa",
+    "کون تھے":              "general_qa",
+    "کیا ہے سبق":           "general_qa",
 }
 
 

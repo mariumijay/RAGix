@@ -424,7 +424,7 @@ async def _main_loop() -> None:
             # Safety net: if genre is still ambiguous, fall back to classify_query
             if genre in ("unknown", "general_qa"):
                 # NEW:
-                genre = await classify_query(urdu_query)   # returns "general_qa" on error  # returns "essay" on error
+                genre = await classify_query_full(urdu_query)   # returns "general_qa" on error  # returns "essay" on error
             chunks = _retrieve_b(urdu_query, genre, mode=_genre_to_mode(genre))
             answer  = await _generate_b(genre, chunks, urdu_query)
             failing = await _validate(genre, answer)
