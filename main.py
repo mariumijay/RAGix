@@ -318,30 +318,49 @@ def _print_result_b(result: dict) -> None:
 
 def _retrieve_both(urdu_query: str) -> list[dict]:
     result_lists = []
+    
     if state.ready_a:
         result_lists += [
-            state.faiss_a.search(urdu_query, top_k=TOP_K_DENSE),
-            state.bm25_a.search(urdu_query,  top_k=TOP_K_SPARSE),
+            state.faiss_a.search(urdu_query, top_k=3),
+            state.bm25_a.search(urdu_query,  top_k=3),
         ]
+
     if state.ready_b:
         result_lists += [
-            state.faiss_b.search(urdu_query, top_k=TOP_K_DENSE),
-            state.bm25_b.search(urdu_query,  top_k=TOP_K_SPARSE),
+            state.faiss_b.search(urdu_query, top_k=3),
+            state.bm25_b.search(urdu_query,  top_k=3),
         ]
     fused = reciprocal_rank_fusion(result_lists)
-    return rerank(urdu_query, fused, top_k=TOP_K_FINAL)
+    fused = fused[:20]
+    return rerank(urdu_query, fused, top_k=4)
 
 
 # ── Paper helper (shared between fast-path and LLM-path) ──────────────────────
 
 async def _run_paper(urdu_query: str) -> None:
     print("\n[پرچہ ساز] جاری ہے…")
-    messages = build_paper_prompt(urdu_query)
+
+    # 1. Retrieve context from BOTH datasets (important)
+    chunks = _retrieve_both(urdu_query)[:3]
+
+    chunks = [
+        {
+            **c,
+            "text": c["text"][:350]   # hard cap per chunk
+        }
+        for c in chunks
+    ]
+
+    # 2. Build prompt WITH context
+    messages = build_paper_prompt(urdu_query, chunks)
+
     response = await _create_completion(
-        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=6000,
+        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3500,
     )
+
     raw = response.choices[0].message.content
     paper_text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
     print(format_urdu(paper_text))
     print()
 
