@@ -338,123 +338,85 @@ def _retrieve_both(urdu_query: str) -> list[dict]:
 # ── Paper helper (shared between fast-path and LLM-path) ──────────────────────
 
 async def _run_paper(urdu_query: str) -> None:
-    print("\n[پرچہ ساز] جاری ہے…")
+    print("\n[پرچہ ساز] جاری ہے… (6 حصے — تقریباً 2 منٹ)")
 
-    # 1. Retrieve context from BOTH datasets (important)
-    chunks = _retrieve_both(urdu_query)[:3]
+    import random
 
-    chunks = [
-        {
-            **c,
-            "text": c["text"][:350]   # hard cap per chunk
-        }
-        for c in chunks
+    meta_a = list(state.faiss_a._metadata) if state.ready_a and state.faiss_a._metadata else []
+    meta_b = list(state.faiss_b._metadata) if state.ready_b and state.faiss_b._metadata else []
+
+    # ── Genre-targeted filters ─────────────────────────────────────────────
+    def by_genre(pool, genres):
+        """Return chunks whose 'genre' field matches any of the given genres.
+        Falls back to the full pool if no match found."""
+        hits = [c for c in pool if c.get("genre", "") in genres]
+        return hits if hits else pool
+
+    nazam_pool   = by_genre(meta_a, {"نظم"})
+    ghazal_pool  = by_genre(meta_a, {"غزل"})
+    sabaq_pool   = by_genre(meta_a, {"نثر", "سبق", "تشریح"})
+    khat_pool    = by_genre(meta_b, {"خط", "درخواست"})
+    kahani_pool  = by_genre(meta_b, {"کہانی", "مکالمہ", "آپ بیتی", "مضمون"})
+    qawaid_pool  = by_genre(meta_b, {"قواعد", "محاورات", "اوقاف"})
+
+    # ── Helpers ────────────────────────────────────────────────────────────
+    def pick(pool, n):
+        """Random sample of n unique chunks from pool."""
+        n = min(n, len(pool))
+        return random.sample(pool, n) if n > 0 else []
+
+    def cap(chunks, max_chars=150):
+        """Hard-cap each chunk's text to limit input tokens."""
+        return [{**c, "text": c.get("text", "")[:max_chars]} for c in chunks]
+
+    # ── Build per-part context ─────────────────────────────────────────────
+    # Part 1 — MCQs: mixed Urdu A (sabaq + nazam + ghazal)
+    p1 = cap(pick(sabaq_pool, 3) + pick(nazam_pool, 1) + pick(ghazal_pool, 1))
+
+    # Part 2 — Q2 (4 nazam ashaar + 3 ghazal ashaar) + Q3 (nasr passage)
+    p2 = cap(pick(nazam_pool, 4) + pick(ghazal_pool, 3) + pick(sabaq_pool, 2))
+
+    # Part 3 — Q4 short questions from sabaq
+    p3 = cap(pick(sabaq_pool, 5))
+
+    # Part 4 — Q5 khulasa topics (2 sabaq) + Q6 markazi khyal (1 nazam)
+    p4 = cap(pick(sabaq_pool, 2) + pick(nazam_pool, 1))
+
+    # Part 5 — Q7 khat/darkhwast + Q8 kahani/mukalma (Urdu B)
+    p5 = cap(pick(khat_pool, 1) + pick(kahani_pool, 1))
+
+    # Part 6 — Q9 qawaid / zarb-ul-amsal
+    p6 = cap(pick(qawaid_pool, 2))
+
+    # Fallback: if any part is empty use a mixed sample
+    fallback = cap(pick(meta_a, 3) + pick(meta_b, 1))
+
+    part_configs = [
+        (1, p1 or fallback, 1400),
+        (2, p2 or fallback,  900),
+        (3, p3 or fallback,  900),
+        (4, p4 or fallback,  800),
+        (5, p5 or fallback,  800),
+        (6, p6 or fallback,  700),
     ]
 
-    # 2. Build prompt WITH context
-    messages = build_paper_prompt(urdu_query, chunks)
+    for i, (part, p_chunks, max_tok) in enumerate(part_configs):
+        print(f"  ⏳ حصہ {part}/6 تیار ہو رہا ہے…")
+        messages = build_paper_prompt(urdu_query, p_chunks, part=part)
 
-    response = await _create_completion(
-        DEFAULT_MODEL, messages, False, temperature=0.4, max_tokens=3500,
-    )
+        response = await _create_completion(
+            DEFAULT_MODEL, messages, False,
+            temperature=0.6,
+            max_tokens=max_tok,
+        )
 
-    raw = response.choices[0].message.content
-    paper_text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+        raw = response.choices[0].message.content
+        paper_text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+        print(format_urdu(paper_text))
+        print("\n" + "-"*40 + "\n")
 
-    print(format_urdu(paper_text))
-    print()
-
-# ── Main loop ─────────────────────────────────────────────────────────────────
-
-async def _main_loop() -> None:
-    print("=" * 60)
-    print("   اردو RAG سسٹم — Unified Urdu RAG System")
-    print("=" * 60)
-
-    if not load_all_indexes():
-        sys.exit(1)
+        if i < len(part_configs) - 1:
+            await asyncio.sleep(20)
 
     print()
-    if state.ready_a:
-        print("  [اردو A]  غزل | نظم | نثر | سبق | تشریح")
-    if state.ready_b:
-        print("  [اردو B]  درخواست | خط | مضمون | کہانی | آپ بیتی | رسید | مکالمہ | پرچہ")
-        print("  [اردو B]  MCQs | خلاصہ | تشریح | سوالات | قواعد | اوقاف | پیراگراف")
-    print()
-    print("سوال درج کریں (خارج ہونے کے لیے 'exit' یا 'quit' لکھیں):\n")
 
-    while True:
-        try:
-            user_input = input("سوال ❯ ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\n[خروج] Goodbye!")
-            break
-
-        if user_input.lower() in {"exit", "quit", "خروج", ""}:
-            print("[خروج] Goodbye!")
-            break
-
-        urdu_query, detected_lang = normalize_query(user_input)
-
-        # ── Step 1: keyword fast-path (zero LLM cost) ─────────────────────────
-        fast_intent = detect_intent(urdu_query)   # returns intent string or "unknown"
-
-        if fast_intent == "paper":
-            await _run_paper(urdu_query)
-            continue
-
-        if fast_intent != "unknown" and fast_intent in _B_GENRES:
-            # Keyword clearly matched a B-genre — no LLM call needed
-            subject = "urdu_B"
-            genre   = fast_intent
-
-        elif fast_intent != "unknown":
-            # Keyword matched an A-side task (summary, poem_explanation, etc.)
-            subject = "urdu_A"
-            genre   = fast_intent
-
-        else:
-            # ── Step 2: ambiguous query — ask the LLM classifier ──────────────
-            intent = await classify_query_full(urdu_query)
-
-            if intent == "paper":
-                await _run_paper(urdu_query)
-                continue
-
-            subject = "urdu_B" if intent in _B_GENRES else "urdu_A"
-            genre   = intent
-
-        label = {"urdu_A": "اردو A", "urdu_B": "اردو B"}.get(subject, subject)
-        genre = genre or "general_qa"   # ← guard against None
-        print(f"\n[{label}] [قسم: {genre}] [جاری ہے]…")
-
-        if subject == "urdu_A":
-            if not state.ready_a:
-                print("[خرابی] Urdu A indexes not loaded.\n")
-                continue
-            reranked, citations = _retrieve_a(urdu_query, TOP_K_FINAL, mode=_genre_to_mode(genre))
-            result = await generate_answer(urdu_query, reranked, mode=_genre_to_mode(genre))
-            _print_result_a({"answer": result["answer"], "citations": citations})
-
-        else:  # urdu_B
-            if not state.ready_b:
-                print("[خرابی] Urdu B indexes not loaded.\n")
-                continue
-            # Safety net: if genre is still ambiguous, fall back to classify_query
-            if genre in ("unknown", "general_qa"):
-                # NEW:
-                genre = await classify_query_full(urdu_query)   # returns "general_qa" on error  # returns "essay" on error
-            chunks = _retrieve_b(urdu_query, genre, mode=_genre_to_mode(genre))
-            answer  = await _generate_b(genre, chunks, urdu_query)
-            failing = await _validate(genre, answer)
-            if failing:
-                answer = await _fix(genre, answer, failing)
-            _print_result_b({
-                "answer":    answer,
-                "genre":     genre,
-                "validated": len(failing) == 0,
-            })
-
-
-if __name__ == "__main__":
-    asyncio.run(_main_loop())

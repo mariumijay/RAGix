@@ -1,37 +1,7 @@
-"""
-retrieval/query_normalizer.py
-==============================
-Detects whether a query is in:
-  • Urdu script  (native — returned as-is)
-  • Roman Urdu   (transliterated Latin → converted to Urdu script via Qwen/Ollama)
-  • Hinglish     (Hindi/English mix   → converted to Urdu script via Qwen/Ollama)
-
-Public API
-----------
-    from retrieval.query_normalizer import normalize_query
-
-    urdu_query, lang = normalize_query("yeh kitaab kis baray mein hai?")
-    # → ("یہ کتاب کس بارے میں ہے؟", "roman_urdu")
-"""
-
 import os
 import re
 import unicodedata
 
-import httpx
-
-_MODEL = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
-_TIMEOUT = 60.0
-
-import requests
-
-HF_TOKEN = os.getenv("HF_TOKEN")
-
-HF_URL = f"https://api-inference.huggingface.co/models/{_MODEL}"
-
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
 # ── Script-detection helpers ───────────────────────────────────────────────
 
 _URDU_RE = re.compile(
@@ -93,56 +63,36 @@ def _detect_language(text: str) -> str:
     return "urdu"
 
 
-# ── Conversion via Qwen/Ollama ─────────────────────────────────────────────
-
-_CONVERSION_PROMPT = """\
-آپ کا کام یہ ہے کہ نیچے دیے گئے متن کو خالص اردو رسم الخط میں تبدیل کریں۔
-صرف تبدیل شدہ اردو متن واپس کریں — کوئی وضاحت، کوئی اضافی الفاظ نہیں۔
-
-متن: {text}
-
-اردو ترجمہ:"""
-
+# ── Conversion via Groq (same API used for all other LLM calls) ────────────
 
 def _convert_to_urdu(text: str) -> str:
-    prompt = f"""
-آپ کا کام یہ ہے کہ درج ذیل متن کو خالص اردو رسم الخط میں تبدیل کریں۔
-صرف اردو میں جواب دیں:
-
-{text}
-"""
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "temperature": 0.0,
-            "max_new_tokens": 200
-        }
-    }
-
+    """Convert Roman Urdu / Hinglish text to Urdu script using Groq."""
     try:
-        resp = requests.post(HF_URL, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
+        from groq import Groq
+        from generation.llm import API_KEYS
 
-        output = resp.json()
-
-        if isinstance(output, list):
-            converted = output[0].get("generated_text", "")
-        else:
-            converted = output.get("generated_text", "")
-
-        # HF text-generation prepends the full prompt to the output — strip it
-        if converted.startswith(prompt):
-            converted = converted[len(prompt):]
-        converted = converted.strip()
-
+        client = Groq(api_key=API_KEYS[0])
+        response = client.chat.completions.create(
+            model="qwen/qwen3-32b",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Convert the following Roman Urdu or Hinglish text into pure Urdu script. "
+                        "Return ONLY the converted Urdu text — no explanation, no extra words."
+                    ),
+                },
+                {"role": "user", "content": text},
+            ],
+            temperature=0.0,
+            max_tokens=200,
+        )
+        converted = response.choices[0].message.content.strip()
         if converted and _urdu_script_ratio(converted) > 0.3:
             return converted
-
         return text
-
     except Exception as e:
-        print(f"[HF conversion failed] {e}")
+        # Silently fall back — the original text is still usable
         return text
 
 # ── Public API ──────────────────────────────────────────────────────────────

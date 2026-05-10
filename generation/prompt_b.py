@@ -755,196 +755,196 @@ def detect_intent(query: str) -> str:
             best_len = len(keyword)
     return best_match
 
-PAPER_SYSTEM_PROMPT = """
-You are a Punjab Board examiner for Class 9 Urdu (Urdu A + Urdu B).
-
-Your job is to generate a REALISTIC board exam paper strictly following official Punjab Board structure, syllabus separation, and question placement rules.
-
-You MUST NOT deviate from the given question order, marks distribution, or book mapping.
-
-
+PAPER_SYSTEM_PROMPT_COMMON = """
+آپ پنجاب بورڈ کے جماعت نہم اردو (لازمی) کے سینئر ممتحن ہیں۔
+آپ کا کام ایک مکمل، اصلی بورڈ امتحانی پرچہ تیار کرنا ہے۔
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ STRICT RULES
+ترجیحی اصول
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Use ONLY the exact items that appear in retrieved_chunks.
-    1.1 Do not infer missing poems, lessons, or MCQs even if structure is incomplete.
-2. Do NOT repeat any lesson, poem, or idea.
-3. Every question MUST come from correct book section.
-4. Follow exact question order and numbering.
-5. No mixing of Urdu A and Urdu B content.
-6. Output must be clean, formal, exam-style Urdu.
-7. No extra or missing sections.
+۱۔ فراہم کردہ نصابی مواد کو بنیاد بنائیں — جہاں مواد موجود ہو وہاں اسی سے سوال بنائیں۔
+۲۔ جہاں کافی مواد نہ ہو وہاں جماعت نہم کے نصاب کے مطابق مناسب سوالات خود بنائیں۔
+۳۔ کوئی سوال یا خیال دہرایا نہ جائے۔
+۴۔ اردو A اور اردو B کا مواد آپس میں نہ ملائیں۔
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📄 PAPER HEADER (mandatory)
+سخت ممانعت
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-بورڈ آف انٹرمیڈیٹ اینڈ سیکنڈری ایجوکیشن، لاہور
-سالانہ امتحان | جماعت نہم | اردو لازمی
-کل نمبر: 75 | وقت: 2 گھنٹے 10 منٹ
-
-رول نمبر: ____________
-نام: ____________
-تاریخ: ____________
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟢 سوال نمبر 1 — MCQs (15 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 15 multiple choice questions
-- Each with A, B, C, D options
-- Only one correct answer
-
-Distribution:
-- 5 MCQs from Urdu A (نثر)
-- 4 MCQs from Urdu A (نظم + غزل)
-- 3 MCQs from قواعد (grammar)
-- 3 MCQs from محاورات / ضرب الامثال
-
-RULE:
-No repetition of lesson or idea.
-
-If fewer than required MCQs exist in context, output only available ones.
-Do NOT generate additional MCQs.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 2 — نظم / غزل (10 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-(a) نظم (6 نمبر)
-- Provide TOTAL 4 اشعار
-- Each shair must be from DIFFERENT نظم
-- Student attempts ANY 3 (2 marks each)
-
-(b) غزل (4 نمبر)
-- Provide TOTAL 3 اشعار
-- Each shair must be from DIFFERENT غزل
-- Student attempts ANY 2 (2 marks each)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 3 — نثر تشریح (10 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Give ONE question only
-- Provide 2 passages from Urdu A syllabus
-- Each passage must be from different lesson
-- Student attempts ONE passage only
-- Write تشریح with reference to context
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 4 — مختصر سوالات (10 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 8 short questions from Urdu A book
-- Student attempts ANY 5
-- 2 marks each
-- Mix of lessons but NO repetition of MCQ content
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 5 — خلاصہ (5 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Give 2 options from Urdu A prose section
-- Student attempts ONE only
-- Summary must be 4-6 paragraphs, 5-6 lines each, in proper board exam style Urdu
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 6 — مرکزی خیال (5 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Give one topicfrom Urdu A nazam section
-- Write central idea in 6–8 lines
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 7 — خط / درخواست (10 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-(URDU B ONLY)
-
-- Option A: Formal Letter
-- Option B: Application
-- Provide 1 topic for each
-- Student attempts ONE only
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 8 — کہانی / مکالمہ (5 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-(URDU B ONLY)
-
-- Option A: Story (with moral)
-- Option B: Dialogue (real-life situation)
-- Provide 1 topic each
-- Student attempts ONE only
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🟡 سوال نمبر 9 — قواعد (5 نمبر)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Choose ONE:
-
-(a) جملوں کی درستی (3 نمبر)
-- 3 incorrect sentences
-- Student corrects all
-
-OR
-
-(b) محاورات / ضرب الامثال (2 نمبر)
-- 2 idioms
-- meaning + sentence
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 FINAL MARK CHECK
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Q1 = 15
-Q2 = 10
-Q3 = 10
-Q4 = 10
-Q5 = 5
-Q6 = 5
-Q7 = 10
-Q8 = 5
-Q9 = 5
-TOTAL = 75
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FINAL VALIDATION RULES (MANDATORY)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- No repetition across any question
-- Strict book separation (Urdu A vs Urdu B)
-- Correct question placement only
-- Proper board exam difficulty level
-- Clean, formal Urdu output only
-
-FINAL SAFETY RULE:
-If you are about to introduce any content not explicitly present in context, stop and replace it with:
-"سیاق میں یہ مواد موجود نہیں"
-
+- پرچے سے پہلے کوئی تعارفی جملہ ہرگز نہ لکھیں۔
+- پرچے کے بعد کوئی تشریح یا تبصرہ نہ کریں۔
+- کوئی سیکشن خالی نہ چھوڑیں — ڈھانچہ لازمی ہے۔
+- انگریزی استعمال نہ کریں (سوائے MCQs کے A/B/C/D کے)۔
+- <think> ٹیگ میں وقت ضائع نہ کریں — فوراً پرچہ لکھنا شروع کریں۔
+/no_think
 """
 
+# ─── حصہ ۱: سرورق + سوال نمبر ۱ (MCQs) ──────────────────────────────────────
+PAPER_SYSTEM_PROMPT_PART1 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سرورق اور سوال نمبر ۱ (کثیر الانتخابی سوالات) لکھیں۔
 
-def build_paper_prompt(query: str, chunks: list[dict]) -> list[dict]:
-    topic_hint = query.strip().replace("\n", " ")[:100] if query.strip() else "عمومی"
+سرورق بالکل اس طرح لکھیں:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+بورڈ آف انٹرمیڈیٹ اینڈ سیکنڈری ایجوکیشن، لاہور
+سالانہ امتحان — جماعت نہم — اردو لازمی
+کل نمبر: ۷۵                          وقت: ۲ گھنٹے ۱۰ منٹ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+رول نمبر: ____________    نام: ____________    تاریخ: ____________
+
+پھر سوال نمبر ۱ لکھیں:
+
+**سوال نمبر ۱ — کثیر الانتخابی سوالات    (۱۵ نمبر)**
+ہدایت: ہر سوال کے چار ممکنہ جوابات (الف، ب، ج، د) دیے گئے ہیں۔ صحیح جواب کا انتخاب کریں۔
+
+تقسیم (ذیل کی تقسیم لازمی پیروی کریں):
+• ۵ سوال اردو A — نثر (مختلف اسباق سے)
+• ۴ سوال اردو A — نظم/غزل (مختلف اشعار سے)
+• ۳ سوال قواعد (اردو گرامر)
+• ۳ سوال محاورات / ضرب الامثال
+
+ہر سوال کی ترتیب:
+۱۔ [سوال کا متن] — (الف) ... (ب) ... (ج) ... (د) ...
+"""
+
+# ─── حصہ ۲: سوال نمبر ۲ (شعری تشریح) + سوال نمبر ۳ (نثری تشریح) ─────────────
+PAPER_SYSTEM_PROMPT_PART2 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سوال نمبر ۲ اور سوال نمبر ۳ لکھیں۔
+
+**سوال نمبر ۲ — تشریح شعری    (۱۰ نمبر)**
+ہدایت: درج ذیل اشعار میں سے کوئی چار کی تشریح حوالہ کے ساتھ لکھیں۔ (ہر شعر ۲.۵ نمبر)
+
+(حصہِ نظم)
+(i)   [نظم کا شعر ۱ — شاعر کا نام]
+(ii)  [نظم کا شعر ۲ — شاعر کا نام]
+(iii) [نظم کا شعر ۳ — شاعر کا نام]
+(iv)  [نظم کا شعر ۴ — شاعر کا نام]
+
+(حصہِ غزل)
+(v)   [غزل کا شعر ۱ — شاعر کا نام]
+(vi)  [غزل کا شعر ۲ — شاعر کا نام]
+(vii) [غزل کا شعر ۳ — شاعر کا نام]
+(viii)[غزل کا شعر ۴ — شاعر کا نام]
+
+(درج بالا ڈھانچے میں اصل اشعار فراہم کردہ مواد یا جماعت نہم کے نصاب سے لیں)
+
+---
+
+**سوال نمبر ۳ — تشریح نثر    (۱۰ نمبر)**
+ہدایت: درج ذیل عبارتوں میں سے کسی ایک کی تشریح کریں۔ مصنف کا نام اور سبق کا حوالہ لازمی لکھیں۔
+
+(الف) [پہلی عبارت — کسی سبق سے ۳ سے ۵ سطریں]
+
+(ب) [دوسری عبارت — کسی مختلف سبق سے ۳ سے ۵ سطریں]
+"""
+
+# ─── حصہ ۳: سوال نمبر ۴ (مختصر سوالات) ─────────────────────────────────────
+PAPER_SYSTEM_PROMPT_PART3 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سوال نمبر ۴ لکھیں۔
+
+**سوال نمبر ۴ — مختصر سوالات    (۱۰ نمبر)**
+ہدایت: درج ذیل میں سے کوئی پانچ سوالوں کے جواب لکھیں۔ (ہر سوال ۲ نمبر)
+
+بالکل ۸ مختصر سوال لکھیں — مختلف اسباق اور نظموں سے۔
+(i) سے (viii) تک نمبر دیں۔
+سوالات مختلف قسم کے ہوں: واقعاتی سوال، معنی پوچھنا، مصنف/شاعر، خیال/پیغام وغیرہ۔
+MCQs والے سوال دہرائے نہ جائیں۔
+"""
+
+# ─── حصہ ۴: سوال نمبر ۵ (خلاصہ) + سوال نمبر ۶ (مرکزی خیال) ────────────────
+PAPER_SYSTEM_PROMPT_PART4 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سوال نمبر ۵ اور سوال نمبر ۶ لکھیں۔
+
+**سوال نمبر ۵ — خلاصہ    (۵ نمبر)**
+ہدایت: درج ذیل میں سے کسی ایک کا خلاصہ اپنے الفاظ میں لکھیں۔
+
+(الف) نظم "[نظم کا عنوان]" از [شاعر کا نام] کا خلاصہ مناسب عنوان کے ساتھ لکھیں۔
+(ب)  سبق "[سبق کا عنوان]" از [مصنف کا نام] کا خلاصہ اپنے الفاظ میں لکھیں۔
+
+---
+
+**سوال نمبر ۶ — مرکزی خیال    (۵ نمبر)**
+ہدایت: درج ذیل میں سے کسی ایک کا مرکزی خیال ۶ سے ۸ سطروں میں لکھیں۔
+
+(i)  نظم/غزل "[عنوان]" از [شاعر کا نام]
+(ii) سبق "[سبق کا عنوان]" از [مصنف کا نام]
+"""
+
+# ─── حصہ ۵: سوال نمبر ۷ (خط/درخواست) + سوال نمبر ۸ (مضمون/کہانی/مکالمہ) ────
+PAPER_SYSTEM_PROMPT_PART5 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سوال نمبر ۷ اور سوال نمبر ۸ لکھیں۔ (یہ اردو B کے سوالات ہیں)
+
+**سوال نمبر ۷ — خط یا درخواست    (۱۰ نمبر)**
+ہدایت: درج ذیل میں سے کوئی ایک لکھیں۔
+
+(الف) رسمی خط (Formal Letter):
+[ایک عملی زندگی کا موضوع لکھیں جس پر طالب علم خط لکھ سکے]
+
+(ب) درخواست (Application):
+[ایک مناسب درخواست کا موضوع جو اسکول یا کالج سے متعلق ہو]
+
+---
+
+**سوال نمبر ۸ — مضمون / کہانی / مکالمہ    (۵ نمبر)**
+ہدایت: درج ذیل میں سے کوئی ایک لکھیں۔
+
+(الف) مضمون: موضوع — [ایک دلچسپ اور نصاب سے متعلق موضوع]
+(ب)  کہانی (سبق آموز): موضوع — [ایک اخلاقی سبق کے ساتھ کہانی کا موضوع]
+"""
+
+# ─── حصہ ۶: سوال نمبر ۹ (قواعد) ───────────────────────────────────────────
+PAPER_SYSTEM_PROMPT_PART6 = PAPER_SYSTEM_PROMPT_COMMON + """
+ابھی صرف سوال نمبر ۹ لکھیں۔
+
+**سوال نمبر ۹ — قواعد    (۵ نمبر)**
+
+(الف) جملوں کی درستی    (۳ نمبر)
+ہدایت: درج ذیل غلط جملوں کو درست کریں۔
+(i)   [غلط جملہ ۱]
+(ii)  [غلط جملہ ۲]
+(iii) [غلط جملہ ۳]
+
+(ب) ضرب الامثال / محاورات    (۲ نمبر)
+ہدایت: درج ذیل ضرب الامثال یا محاورات کے معنی لکھیں اور انہیں جملوں میں استعمال کریں۔
+(i)   [ضرب المثل یا محاورہ ۱]
+(ii)  [ضرب المثل یا محاورہ ۲]
+
+(اصل غلط جملے اور محاورات فراہم کردہ مواد یا جماعت نہم کے نصاب سے لیں)
+"""
+
+_PART_PROMPTS = {
+    1: PAPER_SYSTEM_PROMPT_PART1,
+    2: PAPER_SYSTEM_PROMPT_PART2,
+    3: PAPER_SYSTEM_PROMPT_PART3,
+    4: PAPER_SYSTEM_PROMPT_PART4,
+    5: PAPER_SYSTEM_PROMPT_PART5,
+    6: PAPER_SYSTEM_PROMPT_PART6,
+}
 
 
+def build_paper_prompt(query: str, chunks: list[dict], part: int = 1) -> list[dict]:
     context_text = "\n\n".join(
-    f"سبق: {c.get('book_title','')}\n"
-    f"باب: {c.get('chapter','')}\n"
-    f"متن: {c.get('text','')}"
-    for c in chunks[:10]
+        f"سبق/نظم: {c.get('book_title', '')}\n"
+        f"باب: {c.get('chapter', '')}\n"
+        f"متن: {c.get('text', '')}"
+        for c in chunks
     )
-
+    sys_prompt = _PART_PROMPTS.get(part, PAPER_SYSTEM_PROMPT_PART1)
     return [
-        {
-            "role": "system",
-            "content": PAPER_SYSTEM_PROMPT
-        },
+        {"role": "system", "content": sys_prompt},
         {
             "role": "user",
             "content": (
-                f"مندرجہ ذیل نصابی مواد کی بنیاد پر ماڈل پیپر تیار کریں:\n\n"
-                f"📌 موضوع: {query}\n\n"
-                f"📚 نصابی مواد:\n{context_text}\n\n"
-                f"شرط:\n"
-                f"- تمام سوالات صرف دیے گئے مواد سے ہوں\n"
-                f"- کوئی باہر کا سوال نہ بنایا جائے\n"
-                f"- پیپر 75 نمبر کا ہو\n"
-                f"- حصہ الف، ب، واضح ہوں\n"
+                f"نصابی مواد:\n"
+                f"{'━'*38}\n"
+                f"{context_text}\n"
+                f"{'━'*38}\n\n"
+                f"ہدایات:\n"
+                f"۱۔ اوپر دیے گئے مواد کو ترجیح دیں۔ جہاں کمی ہو وہاں جماعت نہم کے نصاب کے مطابق مواد خود بنائیں۔\n"
+                f"۲۔ پرچہ براہِ راست لکھنا شروع کریں — کوئی تعارف نہیں۔\n"
+                f"۳۔ مکمل اردو رسم الخط استعمال کریں۔ ہر سوال واضح اور غیر مبہم ہو۔\n"
             )
         }
     ]
+
 
 def _fmt_chunks(chunks: list[dict]) -> str:
     if not chunks:
@@ -956,7 +956,6 @@ def _fmt_chunks(chunks: list[dict]) -> str:
 
 
 def get_prompt(genre: str, retrieved_chunks: list[dict], user_query: str) -> list[dict]:
-    
 
     if genre not in _TEMPLATES:
         print(f"[WARN] prompt_b.get_prompt: unknown genre '{genre}' — falling back to 'general_qa'. "
@@ -975,3 +974,4 @@ def get_prompt(genre: str, retrieved_chunks: list[dict], user_query: str) -> lis
         {"role": "system", "content": system_with_ux},
         {"role": "user",   "content": user_content},
     ]
+
