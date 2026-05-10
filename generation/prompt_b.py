@@ -29,6 +29,25 @@ AUTHOR_REF = """
 - میر تقی میر کی غزل بھی شامل ہے
 """
 
+ANTI_REPETITION_RULES = """
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANTI-REPETITION & DIVERSITY POLICY (MANDATORY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. NEVER repeat the same sentence, fact, or phrase within an answer.
+2. NEVER reuse the same retrieved chunk twice.
+3. Each paragraph MUST introduce NEW information — no circular explanations.
+4. If retrieved chunks overlap → silently discard duplicates.
+5. Always PARAPHRASE — never copy sentences from chunks verbatim.
+6. Prioritize semantic diversity over length.
+
+Before finalizing output:
+✔ Check for duplicate ideas across paragraphs
+✔ Remove repeated phrasing
+✔ Ensure each section is semantically unique
+✔ If repetition detected → regenerate that section only
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
 STUDENT_UX_RULES = """
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STUDENT-FRIENDLY OUTPUT RULES
@@ -150,6 +169,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "• Be concise — no unnecessary elaboration beyond 50 words.\n"
         "• If multiple questions are asked — answer each separately "
         "with a divider ━━━ between them.\n\n"
+        "ہر سوال کا جواب موضوع کے لحاظ سے منفرد ہو — ایک ہی نکتہ مختلف الفاظ میں نہ دہرائیں۔"
 
         "── QUALITY CHECKS ───────────────────────────\n"
         "• Every answer must directly address the سوال — no vague responses.\n"
@@ -293,6 +313,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- شاعر کے اندازِ بیان، موضوع، اور ادبی پس منظر کا حوالہ شامل کریں\n"
         "- تشریح مربوط، روان اور امتحانی انداز میں ہو\n"
         "- غیر ضروری تکرار نہ ہو\n"
+        "اگر کئی اشعار دیے گئے ہوں تو ہر شعر کا الگ تصور واضح کریں۔"
         "- مکمل رسمی اور معیاری اردو استعمال کریں\n"
         "- کوئی انگریزی استعمال نہ کریں\n\n"
         f"{AUTHOR_REF}"
@@ -324,6 +345,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- مناسب اور متعلقہ حوالہ جات شامل کریں\n"
         "- تشریح امتحانی انداز، مربوط اور بامحاورہ اردو میں ہو\n"
         "- غیر ضروری تکرار نہ ہو\n"
+        "ہر بند کا منفرد خیال نمایاں کریں — اشعار کے درمیان مفہوم نہ دہرائیں۔"
         "- کوئی انگریزی استعمال نہ کریں\n\n"
         "انتہائی اہم ہدایت:\n"
         "- شعر / بند صرف اسی صورت میں لکھیں جب وہ لفظ بلفظ سیاق و سباق میں موجود ہو\n"
@@ -359,6 +381,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- تشریح مربوط، واضح اور امتحانی انداز میں ہو\n"
         "- غیر ضروری تکرار نہ ہو\n\n"
         "اہم ہدایات:\n"
+        "صرف ایک پیراگراف کو بنیاد بنائیں — مفہوم بڑھائیں مگر متن نہ دہرائیں۔"
         "- سبق کا نام، مصنف کا نام، اور سیاق و سباق صرف دیے گئے context / کتاب سے ہی لیا جائے\n"
         "- اگر معلومات context میں موجود نہ ہوں تو خود سے نہ بنائیں\n"
         "- مکمل جواب خالص، بامحاورہ اور رسمی اردو میں ہو\n"
@@ -417,6 +440,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- انداز رسمی، امتحانی اور بامحاورہ اردو میں ہو\n"
         "- غیر ضروری تفصیل یا تکرار سے بچیں\n\n"
         "انتہائی اہم ہدایات:\n"
+        "ہر پیراگراف میں نیا خیال یا واقعہ پیش کریں — تکرار سے سختی سے بچیں۔"
         "- سبق کا نام اور مصنف کا نام صرف دیے گئے context / کتاب سے ہی لیا جائے\n"
         "- اگر معلومات context میں موجود نہ ہوں تو خود سے نہ بنائیں\n"
         "- خلاصہ strictly کتاب کے سبق کے مطابق ہو\n"
@@ -454,6 +478,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- خیالات میں منطقی ربط اور تسلسل برقرار رہے\n"
         "- غیر ضروری طوالت یا تکرار سے بچیں\n\n"
         "انتہائی اہم ہدایات:\n"
+        "صرف ایک نظم/سبق پر توجہ دیں — کوئی شعر یا سطر دہرائی نہ جائے۔"
         "- نظم / غزل / سبق کا نام اور شاعر / مصنف کا نام صرف دیے گئے context / کتاب سے ہی لیا جائے\n"
         "- اگر معلومات context میں موجود نہ ہوں تو خود سے نہ بنائیں\n"
         "- مرکزی خیال strictly کتاب کے مواد کے مطابق ہو لیکن بیان اپنے الفاظ میں کیا جائے\n"
@@ -510,6 +535,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- غیر ضروری تفصیل یا مشکل الفاظ استعمال نہ کریں\n"
         "- درخواست حقیقت پسندانہ اور امتحانی انداز کے مطابق ہو\n"
         "- bullet points استعمال نہ کریں\n"
+        "صرف ایک مرکزی موضوع پر قائم رہیں — متعدد موضوعات نہ ملائیں۔"
     ),
     "user": (
         "سیاق و سباق:\n{retrieved_chunks}\n\n"
@@ -554,6 +580,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- خط کا انداز حقیقی امتحانی کاپی جیسا ہونا چاہیے\n"
         "- جذباتی مگر رسمی لہجہ برقرار رکھیں\n"
         "- غیر ضروری طوالت یا تکرار سے بچیں\n"
+        "صرف ایک مرکزی موضوع پر قائم رہیں — متعدد موضوعات نہ ملائیں۔"
     ),
     "user": (
         "سیاق و سباق:\n{retrieved_chunks}\n\n"
@@ -589,6 +616,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- کوئی انگریزی استعمال نہ کریں\n"
         "- انداز بالکل بورڈ امتحان کی کاپی جیسا ہو\n"
         "- غیر ضروری طوالت یا تکرار سے بچیں\n"
+        "صرف ایک مرکزی موضوع پر قائم رہیں — متعدد موضوعات نہ ملائیں۔"
     ),
     "user": (
         "سیاق و سباق:\n{retrieved_chunks}\n\n"
@@ -627,7 +655,7 @@ _TEMPLATES: dict[str, dict[str, str]] = {
         "- انداز بالکل بورڈ امتحان کی کاپی جیسا ہو\n"
         "- غیر ضروری طوالت یا تکرار سے بچیں\n"
         "- تحریر تقریباً 2 سے 2.5 صفحات کے امتحانی معیار کے مطابق ہو\n"
-    ),
+        "صرف ایک مرکزی موضوع پر قائم رہیں — متعدد موضوعات نہ ملائیں۔" ),
     "user": (
         "سیاق و سباق:\n{retrieved_chunks}\n\n"
         "سوال:\n"
@@ -964,8 +992,11 @@ def get_prompt(genre: str, retrieved_chunks: list[dict], user_query: str) -> lis
 
     template = _TEMPLATES[genre]
 
-    system_with_ux = template["system"] + "\n\n" + STUDENT_UX_RULES
-
+    system_with_ux = (
+        template["system"]
+        + "\n\n" + ANTI_REPETITION_RULES
+        + "\n\n" + STUDENT_UX_RULES
+    )
     user_content = template["user"].format(
         retrieved_chunks=_fmt_chunks(retrieved_chunks),
         user_query=user_query,

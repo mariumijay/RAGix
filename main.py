@@ -48,18 +48,18 @@ TOP_K_FINAL  = int(os.getenv("TOP_K_FINAL",  "5"))
 
 RETRIEVAL_CONFIG: dict[str, dict] = {
     # writing genres — faiss-heavy (semantic similarity matters most)
-    "application":      {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
-    "letter":           {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
-    "story":            {"faiss_k": 3, "bm25_w": 0.2, "faiss_w": 0.8, "do_rerank": True},
-    "dialogue":         {"faiss_k": 2, "bm25_w": 0.3, "faiss_w": 0.7, "do_rerank": True},
+    "application":      {"faiss_k": 1, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "letter":           {"faiss_k": 1, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "story":            {"faiss_k": 1, "bm25_w": 0.2, "faiss_w": 0.8, "do_rerank": True},
+    "dialogue":         {"faiss_k": 1, "bm25_w": 0.3, "faiss_w": 0.7, "do_rerank": True},
     # tashreeh genres — balanced (need exact verse + semantic context)
-    "tashreeh_ghazal":  {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "tashreeh_ghazal":  {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
     "tashreeh_nazam":   {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
-    "nasar_tashreeh":   {"faiss_k": 4, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
+    "nasar_tashreeh":   {"faiss_k": 2, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
     "poem_explanation": {"faiss_k": 3, "bm25_w": 0.5, "faiss_w": 0.5, "do_rerank": True},
     # structured long — need more context chunks
-    "khulasa":          {"faiss_k": 5, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
-    "markazi_khyal":    {"faiss_k": 4, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "khulasa":          {"faiss_k": 2, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
+    "markazi_khyal":    {"faiss_k": 1, "bm25_w": 0.4, "faiss_w": 0.6, "do_rerank": True},
     # objective / one-line — bm25-heavy (keyword exact match matters)
     "mcq":              {"faiss_k": 3, "bm25_w": 0.6, "faiss_w": 0.4, "do_rerank": False},
     "word_meanings":    {"faiss_k": 2, "bm25_w": 0.7, "faiss_w": 0.3, "do_rerank": False},
@@ -139,6 +139,36 @@ def format_urdu(text: str) -> str:
         return str(text)
     return get_display(arabic_reshaper.reshape(text))
 
+def _dedupe_chunks(chunks: list[dict], similarity_threshold: float = 0.85) -> list[dict]:
+    """Remove near-duplicate chunks based on text overlap.
+    Uses a simple token-set Jaccard similarity to filter semantic duplicates.
+    """
+    if not chunks:
+        return chunks
+    
+    seen_texts: list[set[str]] = []
+    unique: list[dict] = []
+    
+    for c in chunks:
+        text = c.get("text", "").strip()
+        if not text:
+            continue
+        tokens = set(text.split())
+        if not tokens:
+            continue
+        
+        is_dup = False
+        for prev_tokens in seen_texts:
+            overlap = len(tokens & prev_tokens) / max(len(tokens | prev_tokens), 1)
+            if overlap >= similarity_threshold:
+                is_dup = True
+                break
+        
+        if not is_dup:
+            seen_texts.append(tokens)
+            unique.append(c)
+    
+    return unique
 
 # ── Index loading ─────────────────────────────────────────────────────────────
 
@@ -210,6 +240,7 @@ def _retrieve_a(urdu_query: str, top_k: int, mode: str = "short") -> tuple[list[
     sparse = state.bm25_a.search(urdu_query,  top_k=TOP_K_SPARSE)
     fused  = reciprocal_rank_fusion([dense, sparse], mode=mode)
     ranked = rerank(urdu_query, fused, top_k=top_k)
+    ranked = _dedupe_chunks(ranked)
     citations = [
         {
             "chunk_id":   c["chunk_id"],
@@ -235,15 +266,18 @@ def _print_result_a(result: dict) -> None:
 # ── Urdu B pipeline ───────────────────────────────────────────────────────────
 
 def _retrieve_b(urdu_query: str, genre: str, mode: str = "short") -> list[dict]:
-    cfg    = RETRIEVAL_CONFIG.get(genre, _DEFAULT_RETRIEVAL)
+    if genre == "short_question":
+        cfg = {**RETRIEVAL_CONFIG.get(genre, _DEFAULT_RETRIEVAL), "faiss_k": 8}
+    else:
+        cfg = RETRIEVAL_CONFIG.get(genre, _DEFAULT_RETRIEVAL)
     faiss_n = max(10, int(cfg["faiss_w"] * 20))
     bm25_n  = max(10, int(cfg["bm25_w"]  * 20))
     dense  = state.faiss_b.search(urdu_query, top_k=faiss_n)
     sparse = state.bm25_b.search(urdu_query,  top_k=bm25_n)
     fused  = reciprocal_rank_fusion([dense, sparse], mode=mode, genre=genre)
     if cfg["do_rerank"]:
-        return rerank(urdu_query, fused, top_k=cfg["faiss_k"])
-    return fused[:cfg["faiss_k"]]
+        return _dedupe_chunks(rerank(urdu_query, fused, top_k=cfg["faiss_k"]))
+    return _dedupe_chunks(fused[:cfg["faiss_k"]])
 
 
 async def _generate_b(genre: str, chunks: list[dict], query: str) -> str:
@@ -280,6 +314,9 @@ async def _validate(genre: str, output: str) -> list[str]:
         if "opening:N" in result: failing.append("opening")
         if "closing:N" in result: failing.append("closing")
         if not skip_length and "length:N" in result: failing.append("length")
+        sentences = [s.strip() for s in re.split(r'[۔!؟]', output) if len(s.strip()) > 15]
+        if len(sentences) != len(set(sentences)):
+            failing.append("repetition")
         return failing
     except Exception:
         return []
@@ -332,6 +369,7 @@ def _retrieve_both(urdu_query: str) -> list[dict]:
         ]
     fused = reciprocal_rank_fusion(result_lists)
     fused = fused[:20]
+    fused = _dedupe_chunks(fused)
     return rerank(urdu_query, fused, top_k=4)
 
 
@@ -359,11 +397,15 @@ async def _run_paper(urdu_query: str) -> None:
     kahani_pool  = by_genre(meta_b, {"کہانی", "مکالمہ", "آپ بیتی", "مضمون"})
     qawaid_pool  = by_genre(meta_b, {"قواعد", "محاورات", "اوقاف"})
 
+    used_ids: set = set()
     # ── Helpers ────────────────────────────────────────────────────────────
     def pick(pool, n):
-        """Random sample of n unique chunks from pool."""
-        n = min(n, len(pool))
-        return random.sample(pool, n) if n > 0 else []
+        """Sample n unique chunks NEVER previously used in this paper."""
+        available = [c for c in pool if c.get("chunk_id") not in used_ids]
+        n = min(n, len(available))
+        chosen = random.sample(available, n) if n > 0 else []
+        used_ids.update(c.get("chunk_id") for c in chosen if c.get("chunk_id"))
+        return chosen
 
     def cap(chunks, max_chars=150):
         """Hard-cap each chunk's text to limit input tokens."""
@@ -371,13 +413,13 @@ async def _run_paper(urdu_query: str) -> None:
 
     # ── Build per-part context ─────────────────────────────────────────────
     # Part 1 — MCQs: mixed Urdu A (sabaq + nazam + ghazal)
-    p1 = cap(pick(sabaq_pool, 3) + pick(nazam_pool, 1) + pick(ghazal_pool, 1))
+    p1 = cap(pick(sabaq_pool, 5) + pick(nazam_pool, 5) + pick(ghazal_pool, 5))
 
     # Part 2 — Q2 (4 nazam ashaar + 3 ghazal ashaar) + Q3 (nasr passage)
     p2 = cap(pick(nazam_pool, 4) + pick(ghazal_pool, 3) + pick(sabaq_pool, 2))
 
     # Part 3 — Q4 short questions from sabaq
-    p3 = cap(pick(sabaq_pool, 5))
+    p3 = cap(pick(sabaq_pool, 8))
 
     # Part 4 — Q5 khulasa topics (2 sabaq) + Q6 markazi khyal (1 nazam)
     p4 = cap(pick(sabaq_pool, 2) + pick(nazam_pool, 1))
