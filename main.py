@@ -462,7 +462,7 @@ async def _run_paper(urdu_query: str, meta_a: list[dict], meta_b: list[dict]) ->
     p0 = []
  
     # Part 1 (Q2): nazam ashaar + ghazal ashaar for tashreeh
-    p1 = cap(pick(nazam_pool, 6) + pick(ghazal_pool, 4))
+    p1 = cap(pick(nazam_pool, 6) + pick(ghazal_pool, 4), max_chars=500)
  
     # Part 2 (Q3): sabaq passages for nasr tashreeh
     p2 = cap(pick(sabaq_pool, 4), max_chars=300)
@@ -476,8 +476,10 @@ async def _run_paper(urdu_query: str, meta_a: list[dict], meta_b: list[dict]) ->
     # Part 5 (Q7): khat + darkhwast samples
     p5 = cap(pick(khat_pool, 2) + pick(darkhwast_pool, 2), max_chars=250)
  
-    # Part 6 (Q8+Q9): essay/mukalma + qawaid
-    p6 = cap(pick(essay_pool, 2) + pick(qawaid_pool, 3))
+    # Part 6 (Q8+Q9): dialogue/story + qawaid
+    dialogue_pool = by_genre(meta_b, {"مکالمہ", "dialogue"})
+    story_pool    = by_genre(meta_b, {"کہانی", "story"})
+    p6 = cap(pick(dialogue_pool, 2) + pick(story_pool, 2) + pick(qawaid_pool, 3))
  
     # Fallback
     fallback = cap(pick(meta_a, 4) + pick(meta_b, 2))
