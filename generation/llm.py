@@ -11,8 +11,12 @@ from config.config import RAG_MODES
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.getenv("LLM_MODEL", "qwen/qwen3-32b")
+from config.config import GENRE_TO_MODEL, DEFAULT_MODEL as _DEFAULT_MODEL
+DEFAULT_MODEL = os.getenv("LLM_MODEL", _DEFAULT_MODEL)
 
+def get_model_for_genre(genre: str) -> str:
+    return GENRE_TO_MODEL.get(genre, DEFAULT_MODEL)
+    
 # ── Token safety settings ────────────────────────────────────────────────────
 def _get_mode_limits(mode: str = "short") -> tuple[int, int, int]:
     cfg = RAG_MODES.get(mode, RAG_MODES["short"])

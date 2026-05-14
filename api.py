@@ -21,7 +21,7 @@ from fastapi.responses import StreamingResponse
 from ingestion.cleaner import clean_text
 from ingestion.chunker import chunk_text
 from ingestion.embedder import get_dataset_paths, get_embedding_model, ingest_chunks
-from generation.llm import generate_answer, stream_answer, DEFAULT_MODEL
+from generation.llm import generate_answer, stream_answer, DEFAULT_MODEL, get_model_for_genre
 from models.schemas import (
     QueryRequest,
     QueryResponse,
@@ -38,6 +38,8 @@ from retrieval.hybrid import reciprocal_rank_fusion
 from retrieval.query_normalizer import normalize_query
 from retrieval.reranker import rerank
 from retrieval.router import classify_query_full
+from generation.prompt_b import detect_intent
+from main import retrieve_for_paper, _run_paper
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -152,17 +154,30 @@ async def query_endpoint(req: QueryRequest):
         raise HTTPException(status_code=503, detail="No indexes loaded. Run ingestion first.")
 
     urdu_query, _ = normalize_query(req.query)
-    await classify_query_full(urdu_query)
-    chunks = _retrieve(urdu_query, top_k=req.top_k)
+    
+    intent = detect_intent(urdu_query)
+    if intent == "paper":
+        meta_a, meta_b = retrieve_for_paper(state)
+        await _run_paper(urdu_query, meta_a, meta_b)
+        return QueryResponse(
+            answer="[پرچہ ساز] Paper generated and printed to console.",
+            citations=[],
+            model=DEFAULT_MODEL,
+            usage={}
+        )
+    else:
+        genre = await classify_query_full(urdu_query)
+        model = get_model_for_genre(genre)
+        chunks = _retrieve(urdu_query, top_k=5)
 
     if req.stream:
         async def event_stream():
-            async for char in stream_answer(urdu_query, chunks):
+            async for char in stream_answer(urdu_query, chunks, model=model):
                 yield char
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    result = await generate_answer(urdu_query, chunks)
+    result = await generate_answer(urdu_query, chunks, model=model)
 
     citations = [
         CitationSchema(

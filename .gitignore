@@ -3,10 +3,11 @@ __pycache__/
 *.pyc
 
 # Environments
+u/
 venv/
-env/
-.venv/
-conda-meta/
+.env/
+Lib/
+__pycache__/
 
 # Environment variables
 .env
